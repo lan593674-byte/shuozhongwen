@@ -92,7 +92,7 @@ A sign-constrained logistic regression over 19 Chinese stylometric features (sen
 - Leave-one-model-out: 47%–81% caught per unseen model.
 - Held-out human text: 0% misflagged for colloquial forum posts, 4% for web fiction.
 
-It only says whether the statistics resemble the AI texts in the calibration set. It is not a verdict of any commercial detector and not a detector-evasion tool; inside the workflow it is only a guardrail. The human calibration corpus is copyrighted and not distributed; the fetch and import scripts in `calibration/` let you build your own and re-run `calibration/calibrate.py`.
+It only says whether the statistics resemble the AI texts in the calibration set. It is not a verdict of any commercial detector and not a detector-evasion tool; inside the workflow it is only a guardrail. The public-domain classics of the human corpus are included in `calibration/corpus/public-domain/`; the Zhihu, Tieba and Qidian texts are still copyrighted, so `calibration/corpus/MANIFEST.csv` lists only their source links. The fetch and import scripts in `calibration/` let you rebuild them and re-run `calibration/calibrate.py`.
 
 ## Credits and license
 
