@@ -112,7 +112,7 @@ Windows 上把 `python3`/`python` 换成你机器上的 Python 命令即可，�
 - 评委和写作者是同一个模型时，存在自我偏好的可能；全新子代理只去掉了上下文干扰。在意的话用 `judge_api.py` 换一个模型当评委。
 - 评分是伪精确：用的是评委的证据和改法，分数只是门槛。过线就停，不为刷分再改。
 - AI 相似度对“被要求写得自然一点”的 AI 文本明显更难认出；对公文等没进校准集的文体，误判率未知。
-- 校准用的人类语料有版权，**不随仓库分发**。`calibration/` 里有抓取和导入脚本，自己准备语料后运行 `python calibration/calibrate.py` 可以重新校准。
+- 校准语料里的经典名作已进入公有领域，全文收在 `calibration/corpus/public-domain/`；知乎、贴吧、起点的文字仍有版权，只在 `calibration/corpus/MANIFEST.csv` 列出原文链接。`calibration/` 里有抓取和导入脚本，自己准备语料后运行 `python calibration/calibrate.py` 可以重新校准。
 
 ## 目录
 
