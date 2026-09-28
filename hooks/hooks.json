@@ -1,0 +1,30 @@
+{
+  "description": "shuozhongwen: strip provenance marks from written files; strip invisible Unicode from displayed replies.",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/run_hook.js"],
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "MessageDisplay": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/run_display.js"],
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
