@@ -112,7 +112,7 @@ Windows 上把 `python3`/`python` 换成你机器上的 Python 命令即可，�
 - 评委和写作者是同一个模型时，存在自我偏好的可能；全新子代理只去掉了上下文干扰。在意的话用 `judge_api.py` 换一个模型当评委。
 - 评分是伪精确：用的是评委的证据和改法，分数只是门槛。过线就停，不为刷分再改。
 - AI 相似度对“被要求写得自然一点”的 AI 文本明显更难认出；对公文等没进校准集的文体，误判率未知。
-- 校准语料里的经典名作已进入公有领域，全文收在 `calibration/corpus/public-domain/`；知乎、贴吧、起点的文字仍有版权，只在 `calibration/corpus/MANIFEST.csv` 列出原文链接。`calibration/` 里有抓取和导入脚本，自己准备语料后运行 `python calibration/calibrate.py` 可以重新校准。
+- 校准用的人类语料随仓库公开（`calibration/human/`、`calibration/test/`），**不可用于任何商业用途，只能作为个人学习、研究使用**，版权归原作者和平台，MIT 许可不覆盖这些语料，详见 `calibration/corpus/README.md`。扩充语料后运行 `python calibration/calibrate.py` 可以重新校准。
 
 ## 目录
 
@@ -122,7 +122,7 @@ skills/shuozhongwen/ 技能本体：SKILL.md 和 references/（规则、写法�
 agents/             评委和事实核查的提示词（Claude Code 子代理，也被 judge_api.py 读取）
 scripts/            评分、扫描、审读核对、文件清理等脚本
 hooks/              Claude Code 钩子
-calibration/        校准和检验脚本、结果、AI 样本
+calibration/        校准和检验脚本、结果、AI 样本、人类语料（仅限个人学习，不可商用）
 docs/haohao-shuohua/ 好好说话的原始说明
 tests/              python -m pytest -q
 install.py          给其他 agent 安装技能
