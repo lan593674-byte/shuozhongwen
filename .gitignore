@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+backups/
+calibration/raw/
+calibration/human/
+logs/
+calibration/test/
+calibration/rejected/
+calibration/samples/
