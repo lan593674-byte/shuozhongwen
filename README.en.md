@@ -22,6 +22,14 @@ Type `/shuozhongwen <topic or path to draft>`:
 
 Pass bar: literary genres average ≥ 4 with every dimension ≥ 3; practical and argument texts average ≥ 3.5 with every dimension ≥ 3; not flat; zero doubtful facts.
 
+### Data fidelity (enforced whenever you revise an existing draft)
+
+Before touching someone else's draft the plugin loads the `baozhen` constraint skill: numbers, tables, citations and references, terms, hedges such as "possibly" or "mainly", causal direction and claims are never changed, removed or added. A figure that looks wrong, even one the fact checker flags, only goes into the "for the author to check" list of the report.
+
+### Papers: `/shuozhongwen lunwen`
+
+For academic papers, theses, course-project and lab reports: only the language changes, never the research. AI tells are removed while keeping formal academic register (no colloquialisms, no metaphors); numbering, tables, formulas, citations and references stay as they are. A dedicated academic language judge (`lunwen-judge`) scores accuracy, concision, register, coherence, consistency and template-free prose (average ≥ 3.5, each ≥ 3). The academic rigor review skill `xueshu`, active only in this mode, runs a fresh reviewer (`rigor`) over the original and the revision: any loss of rigor (data, hedges, causality, claims, terms, citations, register) must be zero, and problems in the original itself are listed for the author, not fixed. The report includes a sentence-by-sentence change table.
+
 ## Install
 
 Python 3.10+. Core scripts use only the standard library.
@@ -71,7 +79,8 @@ OpenRouter, Kimi, Qwen, Volcengine Ark and local Ollama (`http://localhost:11434
 |---|---|
 | `python scripts/score_zh.py FILE --explain` | AI-likeness score with human-percentile and feature breakdown |
 | `python scripts/haohao_scan.py FILE` | Mechanical scans: section numbering, meta-commentary, half-width punctuation, "not X but Y" |
-| `python scripts/polish_check.py FILE` | Delivery gate: the above plus invisible characters |
+| `python scripts/polish_check.py FILE` | Delivery gate: the above plus invisible characters; `--paper` skips the numbering scan, reference lists are exempt from the punctuation scan |
+| `python scripts/doc_text.py FILE.docx -o FILE.txt` | Extract the text and tables of a .docx |
 | `python scripts/review_zh.py FILE --genre G --review review.json` | Verify a judge's JSON and apply the bar (no model call) |
 | `python scripts/clean_text.py FILE -o OUT --stats` | Strip zero-width and other invisible characters |
 | `python scripts/inspect_file.py FILE` | Report provenance metadata (C2PA, EXIF/XMP, Office properties, ...) |
