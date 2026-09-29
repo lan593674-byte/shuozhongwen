@@ -24,6 +24,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import haohao_scan  # noqa: E402
+from doc_text import read_any  # noqa: E402
 import score_zh  # noqa: E402
 from text_unicode import inspect_text  # noqa: E402
 
@@ -36,12 +37,12 @@ FEATURE_ZH = {
 }
 
 
-def check(text: str) -> dict:
+def check(text: str, paper: bool = False) -> dict:
     uni = inspect_text(text)
     invisible = getattr(uni, "suspicious_total", None)
     if invisible is None:
         invisible = uni.get("suspicious_total", 0) if isinstance(uni, dict) else 0
-    scan = haohao_scan.scan(text)
+    scan = haohao_scan.scan(text, paper=paper)
     rep = score_zh.score_text_stylometry(text, path="<draft>")
     push = sorted(((k, v) for k, v in rep.contributions.items() if v > 0.3), key=lambda kv: -kv[1])
     style_ok = rep.status != "ok" or rep.density_tier != "high"
@@ -59,14 +60,18 @@ def check(text: str) -> dict:
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("path")
+    p.add_argument("--paper", action="store_true", help="论文模式：章节编号不扫")
     p.add_argument("--json", action="store_true")
     a = p.parse_args()
-    r = check(Path(a.path).read_text(encoding="utf-8"))
+    r = check(read_any(a.path), paper=a.paper)
     if a.json:
         print(json.dumps(r, ensure_ascii=False, indent=1))
         return 0 if r["passed"] else 1
     print(f"不可见字符：{r['invisible_chars']} 个")
     for rule in r["haohao_scan"]["rules"]:
+        if rule.get("skipped"):
+            print(f"{rule['label']}：不扫（{rule['skipped']}）")
+            continue
         print(f"{rule['label']}：{rule['count']} 处（上限 {rule['limit']}）{'' if rule['passed'] else '  ← 未通过'}")
         for h in rule["hits"][:5]:
             print(f"    第 {h['line']} 行：{h['text']}")

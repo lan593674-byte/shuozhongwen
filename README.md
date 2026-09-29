@@ -20,7 +20,20 @@
 6. **过硬闸**：`polish_check.py` 查不可见字符、四条机械扫描（章节编号、元话语、半角标点、“不是 X 而是 Y”）和 AI 相似度。
 7. **交稿**：正文加一份修改报告。
 
-过线标准：文学性文字六项平均 ≥ 4、每项 ≥ 3；实用和议论文字平均 ≥ 3.5、每项 ≥ 3；不是白开水；事实存疑为 0。
+过线标准：文学性文字六项平均 ≥ 4、每项 ≥ 3；实用和议论文字平均 ≥ 3.5、每项 ≥ 3；不是白开水；自己从头写的稿子事实存疑为 0。
+
+### 数据保真（改别人的稿子时强制）
+
+改一份已有的稿子时，插件会先加载约束技能 `baozhen`：原稿的数字、表格、引用和参考文献、术语、“可能”“主要”这类限定词、因果方向和论断，一个都不改、不删、不加。即使原稿的数据看起来错了，或者事实核查判它存疑，也只写进修改报告的“待作者核对”，由作者决定。评委要求“补细节”“补观点”时，也只能列给作者，不能替作者编。
+
+### 论文特化：`/shuozhongwen lunwen`
+
+用于学术论文、毕业论文、课程设计报告、实验报告和综述，只改语言，不碰研究：
+
+- 只去 AI 腔（虚动词、空泛修饰、机械衔接、模板排比、整段重复），保持书面学术语体，不口语化、不加比喻、不改人称；章节编号、图表、公式、引用、参考文献原样保留，不增删段落和表格。
+- 语言由专门的学术语言评委（`lunwen-judge`）审：表述准确、简洁、学术语体、衔接与逻辑、一致、去模板腔，平均 ≥ 3.5、每项 ≥ 3。
+- 学术严谨性审查技能 `xueshu`（只在这个模式启用）：一个全新的审查子代理（`rigor`）对照原稿和改稿，找出改稿里任何严谨性退步（数据、限定词、因果、论断、术语、引用、语体），退步必须为 0；原稿本身的问题（数据自洽、结论超出证据、可能的数据泄漏、引用不对应等）列给作者，不改正文。
+- 交稿附修改对照表（原句 → 改句 → 改了什么），作者可以逐条接受或拒绝。
 
 ## 安装
 
@@ -63,6 +76,8 @@ export SHUOZHONGWEN_MODEL=deepseek-chat
 python scripts/judge_api.py 稿件.txt --genre 游记散文
 ```
 
+论文模式：`python scripts/judge_api.py 改稿.txt --genre 课程设计报告 --paper --original 原稿.docx`，同时跑学术语言评委和严谨性审查。
+
 OpenRouter、Kimi、通义、火山方舟、本地 Ollama（`http://localhost:11434/v1`）都可以。特意让一个和写作者不同的模型当评委，可以减少“自己给自己打高分”的偏差。
 
 ## 单独使用的工具
@@ -71,7 +86,8 @@ OpenRouter、Kimi、通义、火山方舟、本地 Ollama（`http://localhost:11
 |---|---|
 | `python scripts/score_zh.py 稿件 --explain` | AI 相似度，附“比多少人类段落更像 AI”和各项特征 |
 | `python scripts/haohao_scan.py 稿件` | 机械扫描：章节编号、元话语、半角标点、“不是 X 而是 Y” |
-| `python scripts/polish_check.py 稿件` | 交付硬闸，上面两项加不可见字符 |
+| `python scripts/polish_check.py 稿件` | 交付硬闸，上面两项加不可见字符；论文加 `--paper`（不扫章节编号），参考文献里的半角标点自动跳过 |
+| `python scripts/doc_text.py 稿件.docx -o 稿件.txt` | 把 .docx 的正文和表格抽成纯文本 |
 | `python scripts/review_zh.py 稿件 --genre 文体 --review 审读.json` | 核对评委 JSON 的证据并判是否过线，不调用模型 |
 | `python scripts/clean_text.py 稿件 -o 输出 --stats` | 清掉零宽字符等不可见字符 |
 | `python scripts/inspect_file.py 文件` | 检查文件里的来源元数据（C2PA、EXIF/XMP、Office 属性等） |
@@ -119,7 +135,9 @@ Windows 上把 `python3`/`python` 换成你机器上的 Python 命令即可，�
 ```
 .claude-plugin/     Claude Code 插件清单和 marketplace
 skills/shuozhongwen/ 技能本体：SKILL.md 和 references/（规则、写法、症状库、扫描正则）
-agents/             评委和事实核查的提示词（Claude Code 子代理，也被 judge_api.py 读取）
+skills/baozhen/     数据保真约束（改别人的稿子时必加载）
+skills/xueshu/      学术严谨性审查（只在论文模式用）
+agents/             评委、事实核查、学术语言评委、严谨性审查的提示词（Claude Code 子代理，也被 judge_api.py 读取）
 scripts/            评分、扫描、审读核对、文件清理等脚本
 hooks/              Claude Code 钩子
 calibration/        校准和检验脚本、结果、AI 样本、人类语料（仅限个人学习，不可商用）

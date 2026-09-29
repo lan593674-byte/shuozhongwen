@@ -2,13 +2,24 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "shuozhongwen",
   "displayName": "Shuo Zhongwen",
-  "version": "3.1.0",
-  "description": "说中文：/shuozhongwen 手动触发的中文写作流程（认文体、定主线、写、全新子代理审读与事实核查、按证据改到过线），AI 腔统计护栏，不可见字符与文件来源元数据清理。",
-  "author": { "name": "lan593674-byte", "url": "https://github.com/lan593674-byte" },
+  "version": "3.2.0",
+  "description": "说中文：/shuozhongwen 手动触发的中文写作流程（认文体、定主线、写、全新子代理审读与事实核查、按证据改到过线），/shuozhongwen lunwen 论文特化（只改语言、学术严谨性审查），改稿时数据保真约束，AI 腔统计护栏，不可见字符与文件来源元数据清理。",
+  "author": {
+    "name": "lan593674-byte",
+    "url": "https://github.com/lan593674-byte"
+  },
   "homepage": "https://github.com/lan593674-byte/shuozhongwen",
   "repository": "https://github.com/lan593674-byte/shuozhongwen",
   "license": "MIT",
-  "keywords": ["chinese", "writing", "editing", "llm-judge", "stylometry", "unicode", "metadata"],
+  "keywords": [
+    "chinese",
+    "writing",
+    "editing",
+    "llm-judge",
+    "stylometry",
+    "unicode",
+    "metadata"
+  ],
   "userConfig": {
     "hook_mode": {
       "type": "string",

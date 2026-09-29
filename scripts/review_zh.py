@@ -13,10 +13,16 @@ does not call any model. It takes the JSON they returned and:
 2. Gate: literary genres need average >= 4.0 and every dimension >= 3;
    practical and argument texts need average >= 3.5 and every dimension >= 3;
    a "flat" verdict always fails.
-3. Facts: claims marked "doubt" block delivery; "rhetoric" does not.
+3. Facts: claims marked "doubt" block delivery only for the writer's own draft
+   (--own). In someone else's draft the data is locked: doubts are listed for the
+   author and the text is never changed because of them.
+4. Paper mode (--paper, /shuozhongwen lunwen): the language judge's six academic
+   dimensions, gate average >= 3.5 and every dimension >= 3; with --original and
+   --rigor, any verbatim-quoted regression in academic rigor fails.
 
 Usage:
-  review_zh.py 稿件 --genre 城市随笔散文 --review 审读.json [--facts 核查.json]
+  review_zh.py 稿件 --genre 城市随笔散文 --review 审读.json [--facts 核查.json] [--own]
+  review_zh.py 改稿 --genre 课程设计报告 --paper --review 审读.json --original 原稿 --rigor 严谨.json
 Exit code 0 = passed.
 """
 
@@ -28,6 +34,10 @@ import re
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from doc_text import read_any  # noqa: E402
+
 DIMENSIONS = [
     ("concrete", "具体可感"),
     ("insight", "自己的发现"),
@@ -35,6 +45,15 @@ DIMENSIONS = [
     ("rhythm", "节奏"),
     ("structure", "结构与张力"),
     ("voice", "声音"),
+]
+# /shuozhongwen lunwen: the language judge (agents/lunwen-judge.md) scores these instead.
+PAPER_DIMENSIONS = [
+    ("accuracy", "表述准确"),
+    ("concision", "简洁"),
+    ("register", "学术语体"),
+    ("coherence", "衔接与逻辑"),
+    ("consistency", "一致"),
+    ("naturalness", "去模板腔"),
 ]
 LITERARY = ("散文", "游记", "随笔", "小说", "演讲", "书评", "影评", "诗", "故事", "回忆", "文学")
 MIN_EVIDENCE = 8
@@ -62,11 +81,11 @@ def quoted(text: str, evidence: str) -> bool:
     return len(ev) >= MIN_EVIDENCE and ev in _norm(text)
 
 
-def check_review(text: str, review: dict, genre: str) -> dict:
-    avg_min, dim_min = gate(genre)
+def check_review(text: str, review: dict, genre: str, paper: bool = False) -> dict:
+    avg_min, dim_min = (3.5, 3) if paper else gate(genre)
     scores = review.get("scores", {})
     dims, void = {}, []
-    for key, label in DIMENSIONS:
+    for key, label in (PAPER_DIMENSIONS if paper else DIMENSIONS):
         item = scores.get(key)
         if not isinstance(item, dict) or not quoted(text, str(item.get("evidence", ""))):
             void.append(label)
@@ -77,26 +96,41 @@ def check_review(text: str, review: dict, genre: str) -> dict:
     flat = bool(review.get("flat"))
     passed = valid and average is not None and average >= avg_min and all(v >= dim_min for v in dims.values()) and not flat
     weakest = sorted(dims, key=lambda k: dims[k])[:2] if dims else []
-    return {"valid": valid, "void": void, "dims": dims, "average": average, "flat": flat,
+    return {"valid": valid, "void": void, "dims": dims, "average": average, "flat": flat, "paper": paper,
             "gate": {"average": avg_min, "each": dim_min}, "passed": passed, "weakest": weakest,
             "fixes": {k: scores[k].get("fix", "") for k in dims if k in scores},
             "cliche": [c for c in review.get("cliche", []) if quoted(text, c)],
             "summary": review.get("summary", "")}
 
 
-def check_facts(text: str, facts: dict) -> dict:
+def check_facts(text: str, facts: dict, own: bool = False) -> dict:
+    """Doubts block delivery only for the writer's own draft (own=True), where they
+    must be verified and fixed. In someone else's draft the data is locked: doubts
+    are listed for the author to check and never block or trigger an edit."""
     claims = facts.get("claims", [])
     doubts = [c for c in claims if c.get("verdict") == "doubt"]
-    return {"claims": len(claims), "doubts": doubts, "passed": not doubts}
+    return {"claims": len(claims), "doubts": doubts, "own": own, "passed": not doubts or not own}
 
 
-def report(r: dict, f: dict | None) -> str:
-    zh = dict(DIMENSIONS)
+def check_rigor(original: str, revised: str, rigor: dict) -> dict:
+    """Academic rigor review (agents/rigor.md). A regression counts only when both
+    quotes are verbatim: the original sentence from the original, the revised one
+    from the revision. Any counted regression fails. Issues are the original's own
+    problems, quoted from the original, for the author."""
+    regressions = [x for x in rigor.get("regressions", [])
+                   if quoted(original, str(x.get("original", ""))) and quoted(revised, str(x.get("revised", "")))]
+    issues = [x for x in rigor.get("issues", []) if quoted(original, str(x.get("text", "")))]
+    void = len(rigor.get("regressions", [])) - len(regressions) + len(rigor.get("issues", [])) - len(issues)
+    return {"regressions": regressions, "issues": issues, "void": void, "passed": not regressions}
+
+
+def report(r: dict, f: dict | None, g: dict | None = None) -> str:
+    zh = dict(PAPER_DIMENSIONS if r.get("paper") else DIMENSIONS)
     out = []
     if not r["valid"]:
         out.append(f"审读无效：{('、'.join(r['void']))} 的证据在原文里找不到，这几项分数作废。换一个全新的评委子代理重审。")
     dims = "、".join(f"{zh[k]} {v}" for k, v in r["dims"].items())
-    out.append(f"编辑审读：平均 {r['average']}（要求 ≥{r['gate']['average']}），{dims}（要求都 ≥{r['gate']['each']}），"
+    out.append(f"{'语言审读' if r.get('paper') else '编辑审读'}：平均 {r['average']}（要求 ≥{r['gate']['average']}），{dims}（要求都 ≥{r['gate']['each']}），"
                f"白开水：{'是' if r['flat'] else '否'}")
     if r["valid"] and not r["passed"]:
         for k in r["weakest"]:
@@ -104,31 +138,46 @@ def report(r: dict, f: dict | None) -> str:
     if r["cliche"]:
         out.append("  套话：" + "；".join(r["cliche"]))
     if f is not None:
-        out.append(f"事实核查：{f['claims']} 条，存疑 {len(f['doubts'])} 条")
+        out.append(f"事实核查：{f['claims']} 条，存疑 {len(f['doubts'])} 条"
+                   + ("" if f["own"] or not f["doubts"] else "（改的是别人的稿子：存疑项只列进“待作者核对”，正文一字不改）"))
         for c in f["doubts"]:
             out.append(f"  存疑：{c.get('text')}  ——  {c.get('note')}")
-    ok = r["passed"] and (f is None or f["passed"])
+    if g is not None:
+        out.append(f"学术严谨性：退步 {len(g['regressions'])} 处，原稿问题 {len(g['issues'])} 条"
+                   + (f"，{g['void']} 条引不出原文已作废" if g["void"] else ""))
+        for x in g["regressions"]:
+            out.append(f"  退步（{x.get('type')}）：原稿「{x.get('original')}」→ 改稿「{x.get('revised')}」 {x.get('note', '')}")
+        for x in g["issues"]:
+            out.append(f"  待作者处理（{x.get('type')}）：「{x.get('text')}」 {x.get('note', '')}")
+    ok = r["passed"] and (f is None or f["passed"]) and (g is None or g["passed"])
     out.append("结论：通过" if ok else "结论：未通过")
     return "\n".join(out)
 
 
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("path", help="稿件文件")
-    p.add_argument("--genre", required=True, help="文体，如 城市随笔散文、周报、知乎回答")
+    p.add_argument("path", help="稿件文件（论文模式下是改稿）")
+    p.add_argument("--genre", required=True, help="文体，如 城市随笔散文、周报、知乎回答、课程设计报告")
     p.add_argument("--review", required=True, help="评委子代理返回的 JSON（文件路径）")
     p.add_argument("--facts", help="事实核查子代理返回的 JSON（文件路径）")
+    p.add_argument("--own", action="store_true", help="稿子是自己从头写的：事实存疑要改到 0 才算过；不加则存疑项只列给作者")
+    p.add_argument("--paper", action="store_true", help="论文模式：按 lunwen-judge 的六项和 3.5 分线判")
+    p.add_argument("--original", help="论文模式：原稿文件，配合 --rigor")
+    p.add_argument("--rigor", help="论文模式：严谨性审查子代理返回的 JSON（文件路径）")
     p.add_argument("--json", action="store_true")
     a = p.parse_args()
-    text = Path(a.path).read_text(encoding="utf-8")
-    r = check_review(text, load_json(Path(a.review).read_text(encoding="utf-8")), a.genre)
-    f = check_facts(text, load_json(Path(a.facts).read_text(encoding="utf-8"))) if a.facts else None
+    if a.rigor and not a.original:
+        p.error("--rigor needs --original")
+    text = read_any(a.path)
+    r = check_review(text, load_json(Path(a.review).read_text(encoding="utf-8")), a.genre, paper=a.paper)
+    f = check_facts(text, load_json(Path(a.facts).read_text(encoding="utf-8")), own=a.own) if a.facts else None
+    g = (check_rigor(read_any(a.original), text, load_json(Path(a.rigor).read_text(encoding="utf-8")))
+         if a.rigor else None)
     if a.json:
-        print(json.dumps({"review": r, "facts": f}, ensure_ascii=False, indent=1))
+        print(json.dumps({"review": r, "facts": f, "rigor": g}, ensure_ascii=False, indent=1))
     else:
-        print(report(r, f))
-    return 0 if r["passed"] and (f is None or f["passed"]) else 1
-
+        print(report(r, f, g))
+    return 0 if r["passed"] and (f is None or f["passed"]) and (g is None or g["passed"]) else 1
 
 if __name__ == "__main__":
     sys.exit(main())
