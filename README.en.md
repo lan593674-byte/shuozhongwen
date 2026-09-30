@@ -28,6 +28,8 @@ Before touching someone else's draft the plugin loads the `baozhen` constraint s
 
 ### Papers: `/shuozhongwen lunwen`
 
+In Claude Code it is also a standalone command, `/shuozhongwen:lunwen`, listed in the plugin menu.
+
 For academic papers, theses, course-project and lab reports: only the language changes, never the research. AI tells are removed while keeping formal academic register (no colloquialisms, no metaphors); numbering, tables, formulas, citations and references stay as they are. A dedicated academic language judge (`lunwen-judge`) scores accuracy, concision, register, coherence, consistency and template-free prose (average ≥ 3.5, each ≥ 3). The academic rigor review skill `xueshu`, active only in this mode, runs a fresh reviewer (`rigor`) over the original and the revision: any loss of rigor (data, hedges, causality, claims, terms, citations, register) must be zero, and problems in the original itself are listed for the author, not fixed. The report includes a sentence-by-sentence change table.
 
 ## Install
