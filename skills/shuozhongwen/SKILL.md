@@ -13,7 +13,7 @@ disable-model-invocation: true
 
 ## 先看参数
 
-- 第一个参数是 `lunwen`（如 `/shuozhongwen lunwen 报告.docx`）：论文特化。读 `references/lunwen.md`，按那里的流程走，**下面的流程不用**。学术论文、毕业论文、课程设计报告、实验报告、综述，用户没写 `lunwen` 你也认出来了，先问一句要不要改用论文模式。
+- 第一个参数是 `lunwen`（如 `/shuozhongwen lunwen 报告.docx`，也可以用单独的命令 `/shuozhongwen:lunwen 报告.docx`）：论文特化。读 `references/lunwen.md`，按那里的流程走，**下面的流程不用**。学术论文、毕业论文、课程设计报告、实验报告、综述，用户没写 `lunwen` 你也认出来了，先问一句要不要改用论文模式。
 - 其他情况：按下面的流程走。
 
 **改的是别人给的稿子**（不是你从头写），动笔前先加载数据保真约束 `baozhen`：Claude Code 里调用技能 `shuozhongwen:baozhen`，其他 agent 读 `R/skills/baozhen/SKILL.md`。它全程生效，优先于本页的一切目标：原稿的数字、表格、引用、术语、论断强度一个都不改，看起来错了也只列给作者。
