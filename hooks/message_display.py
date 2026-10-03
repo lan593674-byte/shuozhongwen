@@ -6,9 +6,9 @@ When a message is complete it may append a footer to the displayed text:
    characters of prose outside code, one line with the Chinese stylometry score.
 2. 检测: right after it, what the checks found: invisible characters or
    garbled text in the reply itself, and in files written since the last
-   reply (saved by the PostToolUse hook, see scripts/hook_state.py). The line
-   is always shown under a scored reply; under a short reply only when a file
-   was written or something was found.
+   reply (saved by the PostToolUse hook, see scripts/hook_state.py). This
+   line is appended to every reply, however short; only the AI-likeness line
+   has a minimum length.
 
 The reply text itself is shown exactly as written (earlier versions stripped
 invisible characters from it; now they are reported instead, and removed only
@@ -59,7 +59,7 @@ def score_line(text: str, status: dict) -> str:
     return f"*AI 相似度 {report.score:.2f}（{TIER_ZH.get(report.density_tier, report.density_tier)}，{where}）{tail}*"
 
 
-def check_line(text: str, session_id: str | None, scored: bool, status: dict) -> str:
+def check_line(text: str, session_id: str | None, status: dict) -> str:
     if os.environ.get("SHUOZHONGWEN_CHECK", "1") == "0":
         return ""
     import file_check
@@ -69,8 +69,6 @@ def check_line(text: str, session_id: str | None, scored: bool, status: dict) ->
     reply = garble.inspect(text)["counts"]
     files = hook_state.consume(session_id)
     status.update(reply_issues=sum(reply.values()), files=len(files))
-    if not (scored or reply or files):
-        return ""
     parts = [f"回复里有{garble.summary(reply)}" if reply else "回复无零宽字符和乱码"]
     bad = [(f, file_check.describe(f)) for f in files]
     bad = [(f, d) for f, d in bad if d]
@@ -94,7 +92,7 @@ def footer(text: str, session_id: str | None, status: dict) -> str:
     except Exception as error:  # scoring must never block the reply
         status["score_error"] = type(error).__name__
     try:
-        c = check_line(text, session_id, bool(lines), status)
+        c = check_line(text, session_id, status)
         if c:
             lines.append(c)
     except Exception as error:

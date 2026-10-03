@@ -120,4 +120,4 @@ python S/polish_check.py 稿件
 - 图片专用：`clean_image.py`；音频重编码：`clean_audio.py`（需要 ffmpeg）
 - 视频和图片的像素级去水印（`--remove-pixel`）需要另装 CtrlRegen 或 MarkDiffusion 模型，默认不带
 
-Claude Code 里有两个钩子，不受 `/shuozhongwen` 控制，一直生效，都**只检查、不修改**：写文件后的钩子检查刚写入的文件有没有零宽字符、乱码和来源元数据，把结果记下来；回复显示前的钩子在 250 字以上的回复末尾附一行 AI 相似度，紧接着一行“检测”：这条回复和这期间写入的文件有没有零宽字符、乱码（短回复只在写了文件或发现问题时才附）。要清除，用 `/shuozhongwen qingli`。其他 agent 没有这两个钩子，需要时手动跑 `python S/qingli.py 路径 --check`。
+Claude Code 里有两个钩子，不受 `/shuozhongwen` 控制，一直生效，都**只检查、不修改**：写文件后的钩子检查刚写入的文件有没有零宽字符、乱码和来源元数据，把结果记下来；回复显示前的钩子在每条回复末尾都附一行“检测”：这条回复和这期间写入的文件有没有零宽字符、乱码，不论回复多短；250 字以上的回复在它上面再加一行 AI 相似度。要清除，用 `/shuozhongwen qingli`。其他 agent 没有这两个钩子，需要时手动跑 `python S/qingli.py 路径 --check`。
