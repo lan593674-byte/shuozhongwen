@@ -26,6 +26,10 @@
 
 改一份已有的稿子时，插件会先加载约束技能 `baozhen`：原稿的数字、表格、引用和参考文献、术语、“可能”“主要”这类限定词、因果方向和论断，一个都不改、不删、不加。即使原稿的数据看起来错了，或者事实核查判它存疑，也只写进修改报告的“待作者核对”，由作者决定。评委要求“补细节”“补观点”时，也只能列给作者，不能替作者编。
 
+### 清除零宽字符和乱码：`/shuozhongwen qingli`
+
+`/shuozhongwen qingli 路径`（也可以用 `/shuozhongwen:qingli`）检测并清除文件、文件夹、Word/PowerPoint/Excel/EPUB 文档或一段文字里的零宽字符等不可见字符和乱码（U+FFFD、控制字符、“锟斤拷”“烫烫烫”，以及编码读错造成的“涓枃”“Ã©”这类错乱，能还原的会还原成原字）。空格、换行、编码、文档格式都不动；改之前自动备份原文件。清完逐条报告清除了什么、在哪一行、哪些地方原来的字已经丢失需要作者补。命令行：`python scripts/qingli.py 路径 [--check]`。
+
 ### 论文特化：`/shuozhongwen lunwen`
 
 在 Claude Code 里也可以用单独的命令 `/shuozhongwen:lunwen`，插件菜单里能直接点到。
@@ -91,7 +95,7 @@ OpenRouter、Kimi、通义、火山方舟、本地 Ollama（`http://localhost:11
 | `python scripts/polish_check.py 稿件` | 交付硬闸，上面两项加不可见字符；论文加 `--paper`（不扫章节编号），参考文献里的半角标点自动跳过 |
 | `python scripts/doc_text.py 稿件.docx -o 稿件.txt` | 把 .docx 的正文和表格抽成纯文本 |
 | `python scripts/review_zh.py 稿件 --genre 文体 --review 审读.json` | 核对评委 JSON 的证据并判是否过线，不调用模型 |
-| `python scripts/clean_text.py 稿件 -o 输出 --stats` | 清掉零宽字符等不可见字符 |
+| `python scripts/qingli.py 路径 [--check]` | 检测并清除零宽字符和乱码（文本、文档、文件夹），报告清除了哪些 |
 | `python scripts/inspect_file.py 文件` | 检查文件里的来源元数据（C2PA、EXIF/XMP、Office 属性等） |
 | `python scripts/clean_file.py 文件 -o 输出` | 清理这些元数据，支持 PNG、JPEG、WebP、SVG、PDF、DOCX、XLSX、PPTX、EPUB、HTML、Markdown、MP4 等 |
 
@@ -99,17 +103,25 @@ Windows 上把 `python3`/`python` 换成你机器上的 Python 命令即可，�
 
 ## Claude Code 里的两个钩子
 
-装了插件后，这两个钩子一直生效，与 `/shuozhongwen` 无关：
+装了插件后，这两个钩子一直生效，与 `/shuozhongwen` 无关。两个钩子都**只检查，不修改**任何文件或回复：
 
-- **写文件后**（PostToolUse）：检查 Claude 刚写的文件里有没有不可见字符和来源元数据。默认只报告；在插件选项里把 `hook_mode` 设成 `clean` 就直接清理。
-- **显示回复前**（MessageDisplay）：清掉回复里的不可见字符；250 字以上的回复末尾附一行 AI 相似度。只改显示，不改会话记录。
+- **写文件后**（PostToolUse）：检查 Claude 刚写的文件里有没有零宽字符等不可见字符、乱码和来源元数据，结果记下来，不弹告警。
+- **显示回复前**（MessageDisplay）：250 字以上的回复末尾附一行 AI 相似度，紧接着一行检测报告：这条回复和这期间写入的文件有没有零宽字符、乱码。短回复只在写了文件或发现问题时才附检测行。只改显示，不改会话记录。
+
+例如：
+
+```
+---
+AI 相似度 0.12（低，在人类文字的常见区间内）
+检测：回复无零宽字符和乱码；写入的 2 个文件里 1 个有问题：notes.md：零宽/不可见字符 3｜清除可用 /shuozhongwen qingli
+```
 
 | 环境变量 | 作用 |
 |---|---|
 | `SHUOZHONGWEN_SCORE=0` | 关掉回复末尾的评分行 |
 | `SHUOZHONGWEN_SCORE_MIN` | 评分的最短字数，默认 250 |
+| `SHUOZHONGWEN_CHECK=0` | 关掉回复末尾的检测行 |
 | `SHUOZHONGWEN_LOG_DIR` | 钩子日志目录，默认插件目录下的 `logs/`；只记计数和分数，不记回复原文 |
-| `WATERMARKS_HOOK_MODE` | 不通过插件选项时设置写文件钩子的模式（`check`/`clean`） |
 
 ## AI 相似度是怎么来的，能说明什么
 

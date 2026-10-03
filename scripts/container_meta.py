@@ -846,12 +846,19 @@ def clean_markdown(text: str) -> tuple[str, list[str]]:
 
             dropping = False
             kept.append(line)
-        new_block = "\n".join(kept).strip("\n")
-        if new_block:
-            out = f"---\n{new_block}\n---\n{body}"
+        if not actions:
+            # Nothing dropped: keep the original bytes, CRLF included. Rebuilding
+            # the block with "\n" used to turn a CRLF file's frontmatter into LF and
+            # report a "clean" that removed nothing.
+            out = text
         else:
-            out = body.lstrip("\n")
-            actions.append("removed empty frontmatter block")
+            nl = "\r\n" if "\r\n" in m.group(0) else "\n"
+            new_block = nl.join(line.rstrip("\r") for line in kept).strip("\r\n")
+            if new_block:
+                out = f"---{nl}{new_block}{nl}---{nl}{body}"
+            else:
+                out = body.lstrip("\r\n")
+                actions.append("removed empty frontmatter block")
     else:
         out = text
 
