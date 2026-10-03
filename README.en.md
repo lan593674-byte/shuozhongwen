@@ -97,7 +97,7 @@ OpenRouter, Kimi, Qwen, Volcengine Ark and local Ollama (`http://localhost:11434
 Both hooks only check; they never modify a file or a reply.
 
 - **After a file write** (PostToolUse): checks the file Claude just wrote for invisible characters, garbled text and provenance metadata, and records the result (no pop-up).
-- **Before a reply is shown** (MessageDisplay): replies of 250+ characters get a one-line AI-likeness score followed by a check line: invisible characters or garbled text in the reply and in files written meanwhile. Short replies get the check line only when files were written or something was found. Display only; the transcript is untouched.
+- **Before a reply is shown** (MessageDisplay): every reply, however short, ends with a check line: invisible characters or garbled text in the reply and in files written meanwhile. Replies of 250+ characters also get an AI-likeness line above it (the statistics are unreliable on shorter text). Display only; the transcript is untouched.
 
 Environment: `SHUOZHONGWEN_SCORE=0` turns the score line off, `SHUOZHONGWEN_SCORE_MIN` sets the minimum length, `SHUOZHONGWEN_CHECK=0` turns the check line off, `SHUOZHONGWEN_LOG_DIR` sets the log folder (counts and scores only, never reply text).
 

@@ -29,8 +29,9 @@ def write(path: Path, tmp_path: Path, session: str = "s1") -> None:
         check=True)
 
 
-def test_short_clean_reply_is_shown_unchanged(tmp_path):
-    assert run({"message_id": "m1", "index": 0, "final": True, "delta": "短回复"}, tmp_path) == "短回复"
+def test_every_reply_gets_the_check_line_however_short(tmp_path):
+    out = run({"message_id": "m1", "index": 0, "final": True, "delta": "好"}, tmp_path)
+    assert out == "好\n\n---\n*检测：回复无零宽字符和乱码*"
 
 
 def test_reply_is_never_modified_only_reported(tmp_path):
