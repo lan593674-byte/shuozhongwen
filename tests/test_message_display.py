@@ -58,7 +58,7 @@ def test_written_files_are_reported_once_after_the_ai_line(tmp_path):
     assert "写入的 2 个文件里 1 个有问题：bad.md：零宽/不可见字符 1、替换符 U+FFFD（字符已丢失） 1" in check
     assert "good.md" not in check
     again = run({"message_id": "m6", "index": 0, "final": True, "delta": "好的", "session_id": "s1"}, tmp_path)
-    assert again == "好的"  # consumed: reported once
+    assert again == "好的\n\n---\n*检测：回复无零宽字符和乱码*"  # files consumed: reported once
     assert bad.read_text(encoding="utf-8").count(ZW) == 1  # never cleaned
 
 
