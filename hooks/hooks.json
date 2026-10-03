@@ -1,5 +1,5 @@
 {
-  "description": "shuozhongwen: strip provenance marks from written files; strip invisible Unicode from displayed replies.",
+  "description": "shuozhongwen: check written files and replies for invisible characters and garbled text (never modifies them); report at the end of the reply with the AI-likeness score.",
   "hooks": {
     "PostToolUse": [
       {
@@ -8,7 +8,9 @@
           {
             "type": "command",
             "command": "node",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/run_hook.js"],
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/run_hook.js"
+            ],
             "timeout": 30
           }
         ]
@@ -20,7 +22,9 @@
           {
             "type": "command",
             "command": "node",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/run_display.js"],
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/run_display.js"
+            ],
             "timeout": 10
           }
         ]

@@ -26,6 +26,10 @@ Pass bar: literary genres average ≥ 4 with every dimension ≥ 3; practical an
 
 Before touching someone else's draft the plugin loads the `baozhen` constraint skill: numbers, tables, citations and references, terms, hedges such as "possibly" or "mainly", causal direction and claims are never changed, removed or added. A figure that looks wrong, even one the fact checker flags, only goes into the "for the author to check" list of the report.
 
+### Clean invisible characters and garbled text: `/shuozhongwen qingli`
+
+`/shuozhongwen qingli PATH` (or `/shuozhongwen:qingli`) finds and removes zero-width and other invisible characters and garbled text (U+FFFD, control characters, 锟斤拷/烫烫烫, and mojibake such as 涓枃 or Ã©, restored to the original characters when possible) in files, folders, Office/EPUB documents or pasted text. Spaces, line endings, encoding and document formatting are left alone; originals are backed up first. The report lists what was removed and where, and which spots lost characters the author must restore. CLI: `python scripts/qingli.py PATH [--check]`.
+
 ### Papers: `/shuozhongwen lunwen`
 
 In Claude Code it is also a standalone command, `/shuozhongwen:lunwen`, listed in the plugin menu.
@@ -90,10 +94,12 @@ OpenRouter, Kimi, Qwen, Volcengine Ark and local Ollama (`http://localhost:11434
 
 ## Claude Code hooks
 
-- **After a file write** (PostToolUse): checks the file Claude just wrote for invisible characters and provenance metadata. Reports by default; set the plugin option `hook_mode` to `clean` to strip in place.
-- **Before a reply is shown** (MessageDisplay): strips invisible characters; replies of 250+ characters get a one-line AI-likeness score. Display only; the transcript is untouched.
+Both hooks only check; they never modify a file or a reply.
 
-Environment: `SHUOZHONGWEN_SCORE=0` turns the score line off, `SHUOZHONGWEN_SCORE_MIN` sets the minimum length, `SHUOZHONGWEN_LOG_DIR` sets the log folder (counts and scores only, never reply text).
+- **After a file write** (PostToolUse): checks the file Claude just wrote for invisible characters, garbled text and provenance metadata, and records the result (no pop-up).
+- **Before a reply is shown** (MessageDisplay): replies of 250+ characters get a one-line AI-likeness score followed by a check line: invisible characters or garbled text in the reply and in files written meanwhile. Short replies get the check line only when files were written or something was found. Display only; the transcript is untouched.
+
+Environment: `SHUOZHONGWEN_SCORE=0` turns the score line off, `SHUOZHONGWEN_SCORE_MIN` sets the minimum length, `SHUOZHONGWEN_CHECK=0` turns the check line off, `SHUOZHONGWEN_LOG_DIR` sets the log folder (counts and scores only, never reply text).
 
 ## About the AI-likeness score
 

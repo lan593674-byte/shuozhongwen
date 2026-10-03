@@ -1,7 +1,7 @@
 ---
 name: shuozhongwen
-description: 说中文：写或改一篇中文文章，要求去掉 AI 味、写出文学水准、事实经得起核查；/shuozhongwen lunwen 是论文特化，只改语言、保证学术严谨。只在用户输入 /shuozhongwen 时使用。
-argument-hint: "[lunwen] 题目或稿件路径（可附文体，如“游记散文”“周报”；论文用 lunwen）"
+description: 说中文：写或改一篇中文文章，要求去掉 AI 味、写出文学水准、事实经得起核查；/shuozhongwen lunwen 是论文特化，只改语言、保证学术严谨；/shuozhongwen qingli 清除零宽字符和乱码。只在用户输入 /shuozhongwen 时使用。
+argument-hint: "[lunwen|qingli] 题目或稿件路径（可附文体，如“游记散文”“周报”；论文用 lunwen）"
 disable-model-invocation: true
 ---
 
@@ -14,6 +14,7 @@ disable-model-invocation: true
 ## 先看参数
 
 - 第一个参数是 `lunwen`（如 `/shuozhongwen lunwen 报告.docx`，也可以用单独的命令 `/shuozhongwen:lunwen 报告.docx`）：论文特化。读 `references/lunwen.md`，按那里的流程走，**下面的流程不用**。学术论文、毕业论文、课程设计报告、实验报告、综述，用户没写 `lunwen` 你也认出来了，先问一句要不要改用论文模式。
+- 第一个参数是 `qingli`（如 `/shuozhongwen qingli 报告.docx`，也可以用单独的命令 `/shuozhongwen:qingli`）：检测并清除零宽字符等不可见字符和乱码。读 `R/skills/qingli/SKILL.md`，按那里的步骤做，**下面的流程不用**。
 - 其他情况：按下面的流程走。
 
 **改的是别人给的稿子**（不是你从头写），动笔前先加载数据保真约束 `baozhen`：Claude Code 里调用技能 `shuozhongwen:baozhen`，其他 agent 读 `R/skills/baozhen/SKILL.md`。它全程生效，优先于本页的一切目标：原稿的数字、表格、引用、术语、论断强度一个都不改，看起来错了也只列给作者。
@@ -119,4 +120,4 @@ python S/polish_check.py 稿件
 - 图片专用：`clean_image.py`；音频重编码：`clean_audio.py`（需要 ffmpeg）
 - 视频和图片的像素级去水印（`--remove-pixel`）需要另装 CtrlRegen 或 MarkDiffusion 模型，默认不带
 
-Claude Code 里有两个钩子，不受 `/shuozhongwen` 控制，一直生效：写文件后的钩子清理 Claude 刚写入文件里的来源痕迹（插件选项 `hook_mode`：`check` 只报告，是默认值；`clean` 直接清理）；MessageDisplay 钩子清掉每条回复里的不可见字符，250 字以上的回复末尾附一行 AI 相似度，只显示、不进会话记录。其他 agent 没有这两个钩子，需要时手动跑上面的脚本。
+Claude Code 里有两个钩子，不受 `/shuozhongwen` 控制，一直生效，都**只检查、不修改**：写文件后的钩子检查刚写入的文件有没有零宽字符、乱码和来源元数据，把结果记下来；回复显示前的钩子在 250 字以上的回复末尾附一行 AI 相似度，紧接着一行“检测”：这条回复和这期间写入的文件有没有零宽字符、乱码（短回复只在写了文件或发现问题时才附）。要清除，用 `/shuozhongwen qingli`。其他 agent 没有这两个钩子，需要时手动跑 `python S/qingli.py 路径 --check`。
