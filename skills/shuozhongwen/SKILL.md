@@ -47,8 +47,6 @@ disable-model-invocation: true
 
 **3. 写或改**
 
-写根据材料的说明文、课程论坛帖这类短文时，先读 `references/examples.md`，那是用户认可的标准。
-
 从含义出发整篇写，别逐句翻译。文学性文字按 craft.md 的五根柱子：具体、发现、语言、节奏与结构、声音。删掉的套话和修饰，要换成具体细节，不能只删不补。开头直接进入，结尾落在一个画面或一句克制的话上，不总结、不号召。
 
 几条写法上的硬规矩，评委和 `polish_check.py` 都会查：
@@ -118,7 +116,6 @@ python S/polish_check.py 稿件
 
 ## 参考文件
 
-- `references/examples.md`：用户认可的标准稿（根据材料写的说明文），写同类文字前先读
 - `references/lunwen.md`：论文特化 `/shuozhongwen lunwen` 的完整流程
 - `R/skills/baozhen/SKILL.md`：数据保真约束（改稿和根据材料新写时必加载）
 - `R/skills/xueshu/SKILL.md`：学术严谨性审查（只在论文模式用）
