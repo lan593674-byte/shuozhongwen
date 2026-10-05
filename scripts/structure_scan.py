@@ -16,8 +16,11 @@ counts the moves Claude-style prose leans on:
 - attribution_repeat: the same source cited with a speech verb again and again
   ("讲座说" "据讲座说" "讲座里还说" ...)
 
-Only short_lead, summary_flip and attribution_repeat block delivery; the other
-three are hints. Limits were set on the calibration corpus (calibration/human
+Also: colon_list (冒号清单), aphorism (段尾对仗警句), callback (前后回扣) and
+process_i (把写作过程写成“我”的经历：我没找到、我读得最久).
+
+Blocking: short_lead, summary_flip, attribution_repeat, and stacking: four or
+more rules of any kind over their limit in one text. The rest are hints. Limits were set on the calibration corpus (calibration/human
 and calibration/test vs calibration/ai): the gates fail 2.8% of human texts.
 Dialogue (text inside quotation marks) and headings are not scanned.
 
@@ -46,6 +49,11 @@ QUESTION_CUE = re.compile(r"(为什么|为何|怎么|如何|何以|是什么|在
 SUMMARY = re.compile(r"(不只是[^。]{1,30}[，,]?(也|还|更)|不仅仅是[^。]{1,30}(更|还|也)|说到底|归根结底|归根到底|回头看|回过头看|其实不是一回事|说白了|换句话说|一言以蔽之|与其说[^。]{1,30}不如说)")
 ATTRIB = re.compile(r"(?:据|按|照)?([一-鿿]{2,4}?)(?:里|中)?(?:还|也|又)?(说过|说|提到|指出|承认|认为|写道|担心|强调|讲)")
 ATTRIB_STOP = set("我们他们她们你们大家有人别人人们这里那里文章本文作者老师同学")
+COLON_LIST = re.compile(r"：([^。！？\n]+)")
+LIST_SEP = re.compile(r"[、，,；]")
+CALLBACK = re.compile(r"就是[^。，！？\n]{0,24}?(那条|那个|那座|那位|那片|那家|那所|那年|那场|那次|那一)")
+PROCESS_I = re.compile(r"我(没|没有|没能)(找到|看到|查到|读到|看懂|搜到)|我读得最|我(先|又|也)?(看了|查了|翻了|读了|搜了)|我想[^。！？\n]{0,6}(在这里|这里)")
+PARALLEL_CUES = ("越", "只", "就", "都", "才", "也", "却", "反倒", "倒")
 
 RULES = (
     # key, label, limit kind
@@ -55,14 +63,22 @@ RULES = (
     ("summary_flip", "总结翻转套话", "count"),
     ("scare_quotes", "给普通词打引号", "per_k"),
     ("attribution_repeat", "同一出处反复引述", "count"),
+    ("colon_list", "冒号清单", "count"),
+    ("aphorism", "段尾对仗警句", "count"),
+    ("callback", "前后回扣", "count"),
+    ("process_i", "第一人称过程交代", "count"),
 )
 LIMITS = {"short_lead": 0.30, "one_line_para": 1, "self_qa": 1, "summary_flip": 2, "scare_quotes": 1.5,
-          "attribution_repeat": 5}
+          "attribution_repeat": 5, "colon_list": 2, "aphorism": 1, "callback": 0, "process_i": 0}
 # Only these block delivery. On the calibration corpus they fail 2.8% of human
 # texts (11 of 388) and 12% of the AI samples; the rest are common in human
 # writing too (Zhihu answers ask and answer questions, quote words, use
 # one-line paragraphs), so they are shown as hints for the writer to look at.
 GATES = {"short_lead", "summary_flip", "attribution_repeat"}
+# Templates rarely come alone. Four or more rules over their limit in one text
+# (hints included) blocks delivery: 1.3% of the 388 human texts do that, the
+# templated forum post that prompted this scan hit six.
+STACK_LIMIT = 3
 SHORT_LEAD_MIN = 3        # at least this many hits before the share counts
 SHORT_LEAD_MAX_HAN = 10   # a "short verdict" opener has at most this many Han characters
 
@@ -114,6 +130,26 @@ def scan(text: str, paper: bool = False) -> dict:
             if not SPEECH_BEFORE.search(before):
                 hits["scare_quotes"].append(m.group(0))
 
+    for p in prose:
+        body = QUOTED.sub("", p)
+        for m in COLON_LIST.finditer(body):
+            items = [x for x in LIST_SEP.split(m.group(1)) if x.strip()]
+            if len(items) >= 3 and all(_han(x) <= 10 for x in items[:3]):
+                hits["colon_list"].append(m.group(0)[:40])
+        sents = [x.strip() for x in SENT.findall(body)]
+        if len(sents) >= 2:
+            last = sents[-1]
+            halves = [h for h in re.split(r"[，,；;]", last.rstrip("。！？!?”")) if h.strip()]
+            if _han(last) <= 34 and len(halves) == 2:
+                a, b = (_han(h) for h in halves)
+                cue = sum(1 for c in PARALLEL_CUES if c in halves[0]) and sum(1 for c in PARALLEL_CUES if c in halves[1])
+                if (last.count("越") >= 2 or (cue and min(a, b) >= 5 and abs(a - b) <= 3)):
+                    hits["aphorism"].append(last)
+        for m in CALLBACK.finditer(body):
+            hits["callback"].append(body[m.start():m.end() + 8])
+        for m in PROCESS_I.finditer(body):
+            hits["process_i"].append(body[max(0, m.start() - 6):m.end() + 6])
+
     attrib = Counter()
     examples: dict[str, list[str]] = {}
     for p in prose:
@@ -155,7 +191,20 @@ def scan(text: str, paper: bool = False) -> dict:
             passed &= ok
         rules.append({"rule": key, "label": label, "count": len(found), "value": value, "limit": limit,
                       "passed": ok, "gate": gate, "hits": found[:12]})
-    return {"passed": passed, "paragraphs": len(prose), "long_paragraphs": len(long_paras), "rules": rules}
+    # 能不用引号就不用：every quotation outside dialogue and attributed speech is listed
+    # for the writer to reconsider. Informational only: it neither blocks nor counts
+    # toward stacking (revisions must keep the author's own quotes).
+    quotes = []
+    for p in prose:
+        for m in re.finditer(r"“([^”\n]{1,40})”", p):
+            before = p[max(0, m.start() - 6):m.start()]
+            if not SPEECH_BEFORE.search(before) and not re.search(r"[。！？!?]$", m.group(1)):
+                quotes.append(m.group(0))
+    over = [r["label"] for r in rules if not r["passed"]]
+    stacked = len(over) > STACK_LIMIT
+    return {"passed": passed and not stacked, "paragraphs": len(prose), "long_paragraphs": len(long_paras),
+            "rules": rules, "stacked": {"count": len(over), "limit": STACK_LIMIT, "passed": not stacked, "rules": over},
+            "quotes": quotes}
 
 
 def report(r: dict) -> str:
@@ -170,6 +219,12 @@ def report(r: dict) -> str:
         if not rule["passed"]:
             for h in rule["hits"]:
                 out.append(f"    {h[:60]}")
+    if r.get("quotes"):
+        out.append(f"引号（能不用就不用）：{len(r['quotes'])} 处，逐处看能不能去掉：" + "、".join(r["quotes"][:12]))
+    st = r.get("stacked")
+    if st:
+        state = "" if st["passed"] else "  ← 未通过：套路叠在一起，读者一眼就能看出来"
+        out.append(f"套路叠加：{st['count']} 类超标（≤{st['limit']}）{state}")
     return "\n".join(out)
 
 
