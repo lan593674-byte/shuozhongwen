@@ -74,3 +74,22 @@ def test_gates_rarely_fire_on_human_calibration_texts():
         return  # corpus not present (e.g. a minimal checkout)
     failed = sum(1 for t in texts if not ss.scan(t)["passed"])
     assert failed / len(texts) <= 0.04, (failed, len(texts))
+
+
+def test_new_rules_and_stacking_on_the_templated_post():
+    text = TEMPLATED + "\n\n当代只以威胁的身份出现：水坝、采矿、伐木、污染。性别分工那一讲我读得最久，短片我没找到字幕，只能看介绍。\n\n2009 年鲁珀特河的水开始改流，就是 1930 年代设河狸保护区的那条河。打猎越靠制度撑着，猎人跟水电公司就越难分开算账。\n"
+    r = ss.scan(text)
+    by = {x["rule"]: x for x in r["rules"]}
+    assert by["colon_list"]["count"] >= 1
+    assert by["process_i"]["count"] >= 2 and not by["process_i"]["gate"]
+    assert by["callback"]["count"] == 1
+    assert by["aphorism"]["count"] == 1
+    assert not r["stacked"]["passed"] and r["stacked"]["count"] >= 4
+
+
+def test_quotes_are_listed_but_never_block():
+    text = PLAIN + "\n\n她把这口灶叫作“老伙计”，说城里那种“方便”她用不惯，邻居都说她“犟”。\n"
+    r = ss.scan(text)
+    assert r["passed"]
+    assert "“方便”" in r["quotes"] and "“犟”" in r["quotes"]
+    assert "“老伙计”" not in r["quotes"]  # named with 叫作: a word used as a word

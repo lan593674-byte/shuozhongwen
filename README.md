@@ -98,7 +98,7 @@ python scripts/judge_config.py test
 | 命令 | 作用 |
 |---|---|
 | `python scripts/score_zh.py 稿件 --explain` | AI 相似度，附“比多少人类段落更像 AI”和各项特征 |
-| `python scripts/structure_scan.py 稿件` | 结构套路：段首短判断句、总结翻转套话、同一出处反复引述（拦）；设问自答、单句成段、给普通词打引号（提示） |
+| `python scripts/structure_scan.py 稿件` | 结构套路：段首短判断句、总结翻转套话、同一出处反复引述、四类以上套路叠加（拦）；设问自答、单句成段、给普通词打引号、冒号清单、段尾对仗警句、前后回扣、第一人称过程交代（提示）；另列出全文每处引号（能不用就不用） |
 | `python scripts/haohao_scan.py 稿件` | 机械扫描：章节编号、元话语、半角标点、“不是 X 而是 Y” |
 | `python scripts/polish_check.py 稿件` | 交付硬闸，上面两项加不可见字符；论文加 `--paper`（不扫章节编号），参考文献里的半角标点自动跳过 |
 | `python scripts/doc_text.py 稿件.docx -o 稿件.txt` | 把 .docx 的正文和表格抽成纯文本 |
