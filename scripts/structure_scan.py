@@ -65,9 +65,11 @@ PARALLEL_CUES = ("越", "只", "就", "都", "才", "也", "却", "反倒", "倒
 META_OPEN = re.compile(r"^(下面|以下|本文|这篇文章|这篇|此文|接下来)[^。！？\n]{0,20}(内容|介绍|讨论|谈谈|说说|讲讲|分析|关于|将|要)")
 META_SOURCE = re.compile(r"(材料|资料|课程|课件|讲座|字幕|视频|阅读材料|本单元|这一单元|这一讲|那几讲|这几讲)"
                          r"(里|中|上)?(都|还|也|并|又)?(只有|没有讲|没讲|都没有讲|都没讲|没有交代|没交代|没有提|没提|没有说|没说)"
-                         r"|(都|均)?(出自|来自|取自)(本|这|以上|上述|所给的?|提供的)?(单元|课程|材料|资料|讲座|课件|字幕)"
-                         # 课上讲过 / 老师说过 / 讲座里提到过: telling the reader where a fact was heard
-                         r"|(课上|课堂上|上课时|老师|讲座里|讲座上|材料里|资料里|书上|课本上)(也|还|都)?(讲过|说过|提到过|提过|讲到过|学过|讲了|说了)")
+                         r"|(都|均)?(出自|来自|取自)(本|这|以上|上述|所给的?|提供的)?(单元|课程|材料|资料|讲座|课件|字幕)")
+# 课上讲过 / 老师说过 / 讲座里提到过: where a fact was heard. Not banned; a hint,
+# because the source is often unnecessary: state the fact directly unless the
+# source matters to the point.
+SOURCE_MENTION = re.compile(r"(课上|课堂上|上课时|老师|讲座里|讲座上|材料里|资料里|书上|课本上)(也|还|都)?(讲过|说过|提到过|提过|讲到过|学过|讲了|说了)")
 
 RULES = (
     # key, label, limit kind
@@ -82,9 +84,11 @@ RULES = (
     ("callback", "前后回扣", "count"),
     ("process_i", "第一人称过程交代", "count"),
     ("meta_source", "开场白和无关交代", "count"),
+    ("source_mention", "交代信息出处（非必要不写）", "count"),
 )
 LIMITS = {"short_lead": 0.30, "one_line_para": 1, "self_qa": 1, "summary_flip": 2, "scare_quotes": 1.5,
-          "attribution_repeat": 5, "colon_list": 2, "aphorism": 1, "callback": 0, "process_i": 0, "meta_source": 0}
+          "attribution_repeat": 5, "colon_list": 2, "aphorism": 1, "callback": 0, "process_i": 0, "meta_source": 0,
+          "source_mention": 0}
 # These block delivery; limits were set on the calibration corpus. The rest are
 # common in human writing too (Zhihu answers ask and answer questions, quote
 # words, use one-line paragraphs), so they are hints. Making every rule zero
@@ -168,6 +172,8 @@ def scan(text: str, paper: bool = False) -> dict:
             hits["callback"].append(body[m.start():m.end() + 8])
         for m in META_SOURCE.finditer(body):
             hits["meta_source"].append(body[max(0, m.start() - 6):m.end() + 8])
+        for m in SOURCE_MENTION.finditer(body):
+            hits["source_mention"].append(body[max(0, m.start() - 6):m.end() + 8])
         for m in PROCESS_I.finditer(body):
             hits["process_i"].append(body[max(0, m.start() - 6):m.end() + 6])
 
