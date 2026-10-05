@@ -76,7 +76,7 @@ def main() -> int:
     p.add_argument("--genre", required=True, help="文体，如 城市随笔散文、周报、知乎回答")
     p.add_argument("--model", default=os.environ.get("SHUOZHONGWEN_MODEL"))
     p.add_argument("--no-facts", action="store_true", help="不做事实核查（论文模式本来就不做，外部事实由严谨性审查列给作者）")
-    p.add_argument("--own", action="store_true", help="稿子是自己从头写的：事实存疑要改到 0；不加则存疑只列给作者")
+    p.add_argument("--own", action="store_true", help="只给题目、没有材料的稿子：事实存疑要改到 0；不加则存疑只列给作者")
     p.add_argument("--paper", action="store_true", help="论文模式：用 lunwen-judge 审语言")
     p.add_argument("--original", help="论文模式：原稿文件，给了就同时跑严谨性审查（agents/rigor.md）")
     p.add_argument("--out-dir", help="审读和核查 JSON 的保存目录，默认与稿件同目录")
