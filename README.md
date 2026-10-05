@@ -71,26 +71,34 @@ python shuozhongwen/install.py codex
 
 没有子代理的 agent，评委有两种办法：用下面的 `judge_api.py` 调一个模型，或者让你在一个全新的对话里贴评分标准和正文。技能里写明了不允许在当前会话里自己给自己打分。
 
-### 用别的模型当评委
+### 用别的模型当评委（推荐）
 
-`scripts/judge_api.py` 通过任意兼容 OpenAI 接口的服务调用评委，每次都是无状态的新请求，提示词直接读 `agents/judge.md`、`agents/factcheck.md`，和子代理用的是同一份。
+写稿的模型给自己打分会偏松：它认不出自己的套路，还会把这些套路当成好文章。所以插件优先让另一个模型当评委。
+
+插件自带一个 MCP 服务（`scripts/judge_mcp.py`，Claude Code 装插件时自动启动），提供 `judge`、`factcheck`、`lunwen_judge`、`rigor`、`judge_status` 五个工具。每次调用都是一次全新的请求，只带评分标准和正文，返回结果已经按 `review_zh.py` 核对过。`/shuozhongwen` 流程里会先调用它，没配置时再退回到子代理。
+
+接口、模型、密钥都放在一个配置文件里（默认 `~/.shuozhongwen/judge.json`，可以用环境变量 `SHUOZHONGWEN_JUDGE_CONFIG` 指到别处），以后换 API 只改这一处：
 
 ```bash
-export SHUOZHONGWEN_API_BASE=https://api.deepseek.com/v1
-export SHUOZHONGWEN_API_KEY=你的密钥
-export SHUOZHONGWEN_MODEL=deepseek-chat
-python scripts/judge_api.py 稿件.txt --genre 游记散文
+python scripts/judge_config.py set --base https://api.deepseek.com/v1 --model deepseek-chat --key-env DEEPSEEK_API_KEY
 ```
 
-论文模式：`python scripts/judge_api.py 改稿.txt --genre 课程设计报告 --paper --original 原稿.docx`，同时跑学术语言评委和严谨性审查。
+```bash
+python scripts/judge_config.py test
+```
 
-OpenRouter、Kimi、通义、火山方舟、本地 Ollama（`http://localhost:11434/v1`）都可以。特意让一个和写作者不同的模型当评委，可以减少“自己给自己打高分”的偏差。
+- 密钥三种给法：`--key-env 环境变量名`（推荐）、`--key-file 路径:变量名`（从 .env 文件读）、`--key 明文`（不推荐）。密钥只在调用时读取，`show` 和 `judge_status` 都不显示它。
+- 不同角色可以用不同模型：`--role factcheck=另一个模型`；`--clear-roles` 恢复全部用 `--model`。
+- OpenRouter、Kimi、通义、火山方舟、本地 Ollama（`http://localhost:11434/v1`）都可以。
+
+不在 Claude Code 里，也可以直接用命令行：`python scripts/judge_api.py 稿件.txt --genre 游记散文`；论文模式：`python scripts/judge_api.py 改稿.txt --genre 课程设计报告 --paper --original 原稿.docx`。
 
 ## 单独使用的工具
 
 | 命令 | 作用 |
 |---|---|
 | `python scripts/score_zh.py 稿件 --explain` | AI 相似度，附“比多少人类段落更像 AI”和各项特征 |
+| `python scripts/structure_scan.py 稿件` | 结构套路：段首短判断句、总结翻转套话、同一出处反复引述（拦）；设问自答、单句成段、给普通词打引号（提示） |
 | `python scripts/haohao_scan.py 稿件` | 机械扫描：章节编号、元话语、半角标点、“不是 X 而是 Y” |
 | `python scripts/polish_check.py 稿件` | 交付硬闸，上面两项加不可见字符；论文加 `--paper`（不扫章节编号），参考文献里的半角标点自动跳过 |
 | `python scripts/doc_text.py 稿件.docx -o 稿件.txt` | 把 .docx 的正文和表格抽成纯文本 |

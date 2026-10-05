@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "judge": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/run_python.js", "scripts/judge_mcp.py"]
+    }
+  }
+}

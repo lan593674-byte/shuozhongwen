@@ -10,13 +10,15 @@ does not call any model. It takes the JSON they returned and:
    draft (whitespace and quote marks ignored, at least 8 characters). A score
    whose evidence cannot be found is void. Any void dimension makes the whole
    review invalid: run a fresh judge again.
-2. Gate: literary genres need average >= 4.0 and every dimension >= 3;
+2. Templates: structural AI templates the judge lists (agents/judge.md 模板腔)
+   count only with verbatim evidence; more than one fails the review.
+3. Gate: literary genres need average >= 4.0 and every dimension >= 3;
    practical and argument texts need average >= 3.5 and every dimension >= 3;
    a "flat" verdict always fails.
-3. Facts: claims marked "doubt" block delivery only for the writer's own draft
+4. Facts: claims marked "doubt" block delivery only for the writer's own draft
    (--own). In someone else's draft the data is locked: doubts are listed for the
    author and the text is never changed because of them.
-4. Paper mode (--paper, /shuozhongwen lunwen): the language judge's six academic
+5. Paper mode (--paper, /shuozhongwen lunwen): the language judge's six academic
    dimensions, gate average >= 3.5 and every dimension >= 3; with --original and
    --rigor, any verbatim-quoted regression in academic rigor fails.
 
@@ -57,6 +59,7 @@ PAPER_DIMENSIONS = [
 ]
 LITERARY = ("散文", "游记", "随笔", "小说", "演讲", "书评", "影评", "诗", "故事", "回忆", "文学")
 MIN_EVIDENCE = 8
+MAX_TEMPLATES = 1  # structural AI templates the judge quoted (agents/judge.md 模板腔); more fails
 _STRIP = re.compile(r"[\s“”‘’\"'「」『』《》…\.。，,、；;：:！!？?—\-]+")
 
 
@@ -94,12 +97,16 @@ def check_review(text: str, review: dict, genre: str, paper: bool = False) -> di
     valid = not void
     average = round(sum(dims.values()) / len(dims), 2) if dims else None
     flat = bool(review.get("flat"))
-    passed = valid and average is not None and average >= avg_min and all(v >= dim_min for v in dims.values()) and not flat
+    templates = [t for t in review.get("templates", [])
+                 if isinstance(t, dict) and quoted(text, str(t.get("evidence", "")))]
+    passed = (valid and average is not None and average >= avg_min and all(v >= dim_min for v in dims.values())
+              and not flat and len(templates) <= MAX_TEMPLATES)
     weakest = sorted(dims, key=lambda k: dims[k])[:2] if dims else []
     return {"valid": valid, "void": void, "dims": dims, "average": average, "flat": flat, "paper": paper,
             "gate": {"average": avg_min, "each": dim_min}, "passed": passed, "weakest": weakest,
             "fixes": {k: scores[k].get("fix", "") for k in dims if k in scores},
             "cliche": [c for c in review.get("cliche", []) if quoted(text, c)],
+            "templates": templates,
             "summary": review.get("summary", "")}
 
 
@@ -135,6 +142,10 @@ def report(r: dict, f: dict | None, g: dict | None = None) -> str:
     if r["valid"] and not r["passed"]:
         for k in r["weakest"]:
             out.append(f"  先改 {zh[k]}：{r['fixes'].get(k, '')}")
+    if r.get("templates"):
+        state = "" if len(r["templates"]) <= MAX_TEMPLATES else f"（超过 {MAX_TEMPLATES} 处，未通过）"
+        out.append(f"  模板腔 {len(r['templates'])} 处{state}：" + "；".join(
+            f"{t.get('type', '')}「{str(t.get('evidence', ''))[:30]}」" for t in r["templates"]))
     if r["cliche"]:
         out.append("  套话：" + "；".join(r["cliche"]))
     if f is not None:

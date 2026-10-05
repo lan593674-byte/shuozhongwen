@@ -66,18 +66,21 @@ Replace `codex` with `agents` (`~/.agents/skills`), `cursor`, `gemini`, or pass 
 
 Agents without subagents can use `judge_api.py` below, or ask you to paste the rubric and text into a brand-new chat. The skill forbids the writing session from grading itself.
 
-### Any model as the judge
+### Another model as the judge (recommended)
 
-`scripts/judge_api.py` calls the judge through any OpenAI-compatible endpoint. Every call is a fresh, stateless request whose prompt comes from `agents/judge.md` and `agents/factcheck.md`, the same files the subagents use.
+A model grading its own draft is too lenient: it does not see its own habits and tends to reward them. The plugin ships an MCP server (`scripts/judge_mcp.py`, started by Claude Code with the plugin) with the tools `judge`, `factcheck`, `lunwen_judge`, `rigor` and `judge_status`. Each call is a fresh request carrying only the rubric and the text, and the result is already checked by `review_zh.py`. The `/shuozhongwen` workflow uses it first and falls back to subagents when it is not configured.
+
+Endpoint, model and key live in one config file (`~/.shuozhongwen/judge.json`, or wherever `SHUOZHONGWEN_JUDGE_CONFIG` points), so switching APIs means editing one place:
 
 ```bash
-export SHUOZHONGWEN_API_BASE=https://api.deepseek.com/v1
-export SHUOZHONGWEN_API_KEY=your-key
-export SHUOZHONGWEN_MODEL=deepseek-chat
-python scripts/judge_api.py draft.txt --genre 游记散文
+python scripts/judge_config.py set --base https://api.deepseek.com/v1 --model deepseek-chat --key-env DEEPSEEK_API_KEY
 ```
 
-OpenRouter, Kimi, Qwen, Volcengine Ark and local Ollama (`http://localhost:11434/v1`) all work. Using a different model than the writer reduces self-preference bias.
+```bash
+python scripts/judge_config.py test
+```
+
+Keys can come from an environment variable (`--key-env`), a .env file (`--key-file PATH:VAR`) or plain text (`--key`, not recommended); they are read at call time and never displayed. `--role factcheck=MODEL` sets a model per role. OpenRouter, Kimi, Qwen, Volcengine Ark and local Ollama all work. Outside Claude Code use the CLI: `python scripts/judge_api.py draft.txt --genre 游记散文`.
 
 ## Standalone tools
 
