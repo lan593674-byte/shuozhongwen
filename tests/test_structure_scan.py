@@ -100,3 +100,9 @@ def test_quotes_are_listed_but_never_block():
     assert r["passed"]
     assert "“方便”" in r["quotes"] and "“犟”" in r["quotes"]
     assert "“老伙计”" not in r["quotes"]  # named with 叫作: a word used as a word
+
+
+def test_heard_in_class_is_meta_source():
+    text = "贸易壁垒在削弱打猎，课上也讲过这一点，老猎人会决定哪只猎物先不打，留着它繁殖，这些规矩同样来自外面。"
+    by = {x["rule"]: x for x in ss.scan(text)["rules"]}
+    assert by["meta_source"]["count"] == 1 and not by["meta_source"]["passed"]
