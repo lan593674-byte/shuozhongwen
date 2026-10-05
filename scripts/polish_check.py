@@ -4,6 +4,8 @@
 Runs, in this order, and reports all of them:
 1. invisible Unicode carriers (text_unicode, report only)
 2. the skill's four zero-tolerance scans (haohao_scan)
+   and the structural template scan (structure_scan: short verdict openers,
+   summary formulas, one source cited over and over; three more as hints)
 3. the Chinese stylometry gauge (score_zh): tier, where the score sits among
    human text, and (only when the tier is high) what to fix
 
@@ -24,6 +26,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import haohao_scan  # noqa: E402
+import structure_scan  # noqa: E402
 from doc_text import read_any  # noqa: E402
 import score_zh  # noqa: E402
 from text_unicode import inspect_text  # noqa: E402
@@ -43,13 +46,15 @@ def check(text: str, paper: bool = False) -> dict:
     if invisible is None:
         invisible = uni.get("suspicious_total", 0) if isinstance(uni, dict) else 0
     scan = haohao_scan.scan(text, paper=paper)
+    struct = structure_scan.scan(text, paper=paper)
     rep = score_zh.score_text_stylometry(text, path="<draft>")
     push = sorted(((k, v) for k, v in rep.contributions.items() if v > 0.3), key=lambda kv: -kv[1])
     style_ok = rep.status != "ok" or rep.density_tier != "high"
     return {
-        "passed": invisible == 0 and scan["passed"] and style_ok,
+        "passed": invisible == 0 and scan["passed"] and struct["passed"] and style_ok,
         "invisible_chars": invisible,
         "haohao_scan": scan,
+        "structure": struct,
         "style": {"status": rep.status, "score": rep.score, "tier": rep.density_tier,
                   "human_percentile": rep.human_percentile,
                   "findings": rep.findings if rep.density_tier == "high" else [],
@@ -75,6 +80,9 @@ def main() -> int:
         print(f"{rule['label']}：{rule['count']} 处（上限 {rule['limit']}）{'' if rule['passed'] else '  ← 未通过'}")
         for h in rule["hits"][:5]:
             print(f"    第 {h['line']} 行：{h['text']}")
+    print("结构套路：")
+    for line in structure_scan.report(r["structure"]).splitlines():
+        print("  " + line)
     s = r["style"]
     if s["score"] is None:
         print(f"文体评分：未评（{s['status']}）")

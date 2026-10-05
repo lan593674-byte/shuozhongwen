@@ -53,7 +53,8 @@ def test_end_to_end_with_mock_server(tmp_path):
     srv, seen = _serve(replies)
     try:
         env = {**__import__("os").environ, "SHUOZHONGWEN_API_BASE": f"http://127.0.0.1:{srv.server_port}/v1",
-               "SHUOZHONGWEN_API_KEY": "", "OPENAI_API_KEY": "", "PYTHONUTF8": "1"}
+               "SHUOZHONGWEN_API_KEY": "", "OPENAI_API_KEY": "", "PYTHONUTF8": "1",
+               "SHUOZHONGWEN_JUDGE_CONFIG": str(tmp_path / "none.json")}
         r = subprocess.run([sys.executable, str(SCRIPT), str(draft), "--genre", "城市随笔散文", "--model", "mock", "--json"],
                            capture_output=True, text=True, encoding="utf-8", env=env, timeout=60)
     finally:
@@ -80,7 +81,8 @@ def test_paper_mode_runs_lunwen_judge_and_rigor(tmp_path):
     srv, seen = _serve(replies)
     try:
         env = {**__import__("os").environ, "SHUOZHONGWEN_API_BASE": f"http://127.0.0.1:{srv.server_port}/v1",
-               "SHUOZHONGWEN_API_KEY": "", "OPENAI_API_KEY": "", "PYTHONUTF8": "1"}
+               "SHUOZHONGWEN_API_KEY": "", "OPENAI_API_KEY": "", "PYTHONUTF8": "1",
+               "SHUOZHONGWEN_JUDGE_CONFIG": str(tmp_path / "none.json")}
         r = subprocess.run([sys.executable, str(SCRIPT), str(rev), "--genre", "课程设计报告", "--paper",
                             "--original", str(orig), "--model", "mock", "--json"],
                            capture_output=True, text=True, encoding="utf-8", env=env, timeout=60)
@@ -91,3 +93,46 @@ def test_paper_mode_runs_lunwen_judge_and_rigor(tmp_path):
     assert out["facts"] is None and len(seen) == 2  # paper mode: no literary fact check
     systems = [b["messages"][0]["content"] for b in seen]
     assert any("学术期刊语言编辑" in x for x in systems) and any("审稿人" in x for x in systems)
+
+
+def test_config_file_picks_model_per_role_and_key_from_dotenv(tmp_path, monkeypatch):
+    import judge_config
+
+    env = tmp_path / ".env"
+    env.write_text("OTHER=1\nMY_KEY='secret-123'\n", encoding="utf-8")
+    cfg = tmp_path / "judge.json"
+    cfg.write_text(json.dumps({"api_base": "http://x/v1/", "model": "m-main", "models": {"rigor": "m-rigor"},
+                               "api_key_file": {"path": str(env), "var": "MY_KEY"}}), encoding="utf-8")
+    for v in ("SHUOZHONGWEN_API_BASE", "SHUOZHONGWEN_MODEL", "SHUOZHONGWEN_API_KEY", "OPENAI_API_KEY"):
+        monkeypatch.delenv(v, raising=False)
+    monkeypatch.setenv("SHUOZHONGWEN_JUDGE_CONFIG", str(cfg))
+    j, r = judge_config.resolve("judge"), judge_config.resolve("rigor")
+    assert (j["model"], r["model"], j["base"], j["key"]) == ("m-main", "m-rigor", "http://x/v1", "secret-123")
+    assert "secret-123" not in judge_config.describe()
+    monkeypatch.setenv("SHUOZHONGWEN_MODEL", "env-model")
+    assert judge_config.resolve("rigor")["model"] == "env-model"
+
+
+def test_mcp_server_lists_tools_and_judges_through_the_configured_model(tmp_path):
+    from test_review_zh import QUOTES as Q, TEXT as T, review as rv
+
+    replies = {"judge": json.dumps(rv(4, Q), ensure_ascii=False), "rigor": "{}", "facts": "{}"}
+    srv, seen = _serve(replies)
+    cfg = tmp_path / "judge.json"
+    cfg.write_text(json.dumps({"api_base": f"http://127.0.0.1:{srv.server_port}/v1", "model": "mock"}), encoding="utf-8")
+    msgs = [{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2025-06-18"}},
+            {"jsonrpc": "2.0", "method": "notifications/initialized"},
+            {"jsonrpc": "2.0", "id": 2, "method": "tools/list"},
+            {"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "judge", "arguments": {"genre": "城市随笔散文", "text": T}}}]
+    env = {**__import__("os").environ, "SHUOZHONGWEN_JUDGE_CONFIG": str(cfg), "SHUOZHONGWEN_API_KEY": "", "OPENAI_API_KEY": "",
+           "SHUOZHONGWEN_API_BASE": "", "SHUOZHONGWEN_MODEL": ""}
+    try:
+        p = subprocess.run([sys.executable, str(SCRIPT.parent / "judge_mcp.py")], input="\n".join(json.dumps(m, ensure_ascii=False) for m in msgs) + "\n",
+                           capture_output=True, text=True, encoding="utf-8", env=env, timeout=60)
+    finally:
+        srv.shutdown()
+    out = {d["id"]: d for d in map(json.loads, p.stdout.splitlines())}
+    assert {t["name"] for t in out[2]["result"]["tools"]} == {"judge", "factcheck", "lunwen_judge", "rigor", "judge_status"}
+    text = out[3]["result"]["content"][0]["text"]
+    assert "评委模型：mock" in text and "结论：通过" in text
+    assert len(seen) == 1 and len(seen[0]["messages"]) == 2  # one fresh request, rubric + text only
