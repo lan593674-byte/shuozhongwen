@@ -6,7 +6,8 @@
   characters in human text as in AI text are excluded.
 - Standardized features -> L2 logistic regression with class weights.
 - Reported accuracy is grouped 10-fold (whole files held out) plus leave-one-model-out.
-- Tiers: 'high' = 95th percentile of held-out human scores (≈5% human false
+- Tiers: 'high' = fixed at HIGH_THRESHOLD (0.6, about the human 90th percentile; was the
+  95th percentile until 2026-10-05) (≈10% human false
   positives), 'medium' = 80th percentile.
 Writes scripts/zh_model.json and calibration/RESULTS.md.
 """
@@ -44,6 +45,8 @@ SIZES = (250, 400, 600, 850)  # rotating chunk sizes, same for both classes
 PARA = chr(10) * 2
 MAX_CHUNKS = 6  # per source file, so one very long text cannot dominate
 
+
+HIGH_THRESHOLD = 0.6
 
 def chunks(text: str, start: int = 0) -> list[str]:
     """Cut text at paragraph boundaries into chunks whose target length rotates
@@ -193,7 +196,9 @@ def main() -> int:
     held = cross_val(feats, ys, groups, folds_by_group(groups))
     human_held = [s for s, y in zip(held, ys) if y == 0]
     ai_held = [s for s, y in zip(held, ys) if y == 1]
-    hi_t = pct(human_held, 0.95)
+    # 2026-10-05: the user set the high tier at a fixed 0.6 (about the human
+    # 90th percentile); recalibration keeps that threshold.
+    hi_t = HIGH_THRESHOLD
     med_t = pct(human_held, 0.80)
     acc05 = sum((s >= 0.5) == bool(y) for s, y in zip(held, ys)) / len(ys)
 
@@ -236,7 +241,7 @@ def main() -> int:
         f"AI 侧 {c['ai_sources']} 篇（{len(models)} 个模型）切成 {c['ai_chunks']} 段。每段 250–900 字，两边切法相同。",
         "", "## 分组交叉验证（整篇文章一起留出，不是训练集内成绩）", "",
         f"- 以 0.5 为界的准确率：{acc05:.1%}",
-        f"- `high` 档阈值 {hi_t:.3f}（人类段落第 95 百分位）：AI 段落命中 {rate(ai_held, hi_t):.0%}，人类段落误判 {rate(human_held, hi_t):.0%}",
+        f"- `high` 档阈值 {hi_t:.3f}（固定值，约为人类段落第 90 百分位）：AI 段落命中 {rate(ai_held, hi_t):.0%}，人类段落误判 {rate(human_held, hi_t):.0%}",
         f"- `medium` 档阈值 {med_t:.3f}（人类段落第 80 百分位）：AI 段落达到 medium 及以上 {rate(ai_held, med_t):.0%}",
         "", "### 人类段落按来源的误判率（达到 high）", "",
     ]

@@ -108,7 +108,7 @@ Environment: `SHUOZHONGWEN_SCORE=0` turns the score line off, `SHUOZHONGWEN_SCOR
 
 A sign-constrained logistic regression over 19 Chinese stylometric features (sentence and paragraph length variation, connective density, ellipses and exclamations, pronoun and particle density, bigram repetition, stock-phrase markers, ...). Calibrated on 339 human texts (classics, pre-2020 Zhihu and Tieba long posts, free chapters of web novels, all hand-reviewed) and 101 texts from 8 models.
 
-- Grouped cross-validation: with the `high` threshold at the human 95th percentile, 66% of AI passages are caught and 5% of human passages are misflagged.
+- The `high` threshold is fixed at 0.6 (about the human 90th percentile). Per article, 90% of the AI calibration texts reach it and 5% of human texts are misflagged; 0% of the 49 held-out human texts. (Before 2026-10-05 it was the 95th percentile, 0.789: 72% caught, 1.8% misflagged.)
 - Leave-one-model-out: 47%–81% caught per unseen model.
 - Held-out human text: 0% misflagged for colloquial forum posts, 4% for web fiction.
 
