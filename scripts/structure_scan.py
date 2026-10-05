@@ -19,9 +19,14 @@ counts the moves Claude-style prose leans on:
 Also: colon_list (冒号清单), aphorism (段尾对仗警句), callback (前后回扣) and
 process_i (把写作过程写成“我”的经历：我没找到、我读得最久).
 
-Blocking: short_lead, summary_flip, attribution_repeat, and stacking: four or
-more rules of any kind over their limit in one text. The rest are hints. Limits were set on the calibration corpus (calibration/human
-and calibration/test vs calibration/ai): the gates fail 2.8% of human texts.
+And meta_source: words that are not about the subject, an opener announcing
+what follows or where it comes from (下面关于……的内容都出自……) and remarks on the
+writer's own sources (材料里只有两条 / 课程都没有讲). Naming a source when it is part
+of the argument is fine.
+
+Blocking: short_lead, summary_flip, attribution_repeat, meta_source, and
+stacking (four or more rules of any kind over their limit). The rest are hints.
+On the 388 human calibration texts the blocking rules fail 3.1%.
 Dialogue (text inside quotation marks) and headings are not scanned.
 
 Usage: structure_scan.py 稿件 [--paper] [--json]   exit 0 = passed
@@ -54,6 +59,13 @@ LIST_SEP = re.compile(r"[、，,；]")
 CALLBACK = re.compile(r"就是[^。，！？\n]{0,24}?(那条|那个|那座|那位|那片|那家|那所|那年|那场|那次|那一)")
 PROCESS_I = re.compile(r"我(没|没有|没能)(找到|看到|查到|读到|看懂|搜到)|我读得最|我(先|又|也)?(看了|查了|翻了|读了|搜了)|我想[^。！？\n]{0,6}(在这里|这里)")
 PARALLEL_CUES = ("越", "只", "就", "都", "才", "也", "却", "反倒", "倒")
+# Words that are not about the subject: an opener announcing what follows or
+# where it comes from, and remarks on the writer's own sources (what they cover,
+# what they leave out). Naming a source as part of the argument is fine.
+META_OPEN = re.compile(r"^(下面|以下|本文|这篇文章|这篇|此文|接下来)[^。！？\n]{0,20}(内容|介绍|讨论|谈谈|说说|讲讲|分析|关于|将|要)")
+META_SOURCE = re.compile(r"(材料|资料|课程|课件|讲座|字幕|视频|阅读材料|本单元|这一单元|这一讲|那几讲|这几讲)"
+                         r"(里|中|上)?(都|还|也|并|又)?(只有|没有讲|没讲|都没有讲|都没讲|没有交代|没交代|没有提|没提|没有说|没说)"
+                         r"|(都|均)?(出自|来自|取自)(本|这|以上|上述|所给的?|提供的)?(单元|课程|材料|资料|讲座|课件|字幕)")
 
 RULES = (
     # key, label, limit kind
@@ -67,14 +79,15 @@ RULES = (
     ("aphorism", "段尾对仗警句", "count"),
     ("callback", "前后回扣", "count"),
     ("process_i", "第一人称过程交代", "count"),
+    ("meta_source", "开场白和无关交代", "count"),
 )
 LIMITS = {"short_lead": 0.30, "one_line_para": 1, "self_qa": 1, "summary_flip": 2, "scare_quotes": 1.5,
-          "attribution_repeat": 5, "colon_list": 2, "aphorism": 1, "callback": 0, "process_i": 0}
-# Only these block delivery. On the calibration corpus they fail 2.8% of human
-# texts (11 of 388) and 12% of the AI samples; the rest are common in human
-# writing too (Zhihu answers ask and answer questions, quote words, use
-# one-line paragraphs), so they are shown as hints for the writer to look at.
-GATES = {"short_lead", "summary_flip", "attribution_repeat"}
+          "attribution_repeat": 5, "colon_list": 2, "aphorism": 1, "callback": 0, "process_i": 0, "meta_source": 0}
+# These block delivery; limits were set on the calibration corpus. The rest are
+# common in human writing too (Zhihu answers ask and answer questions, quote
+# words, use one-line paragraphs), so they are hints. Making every rule zero
+# tolerance was tried on 2026-10-05 and failed 88% of the human texts.
+GATES = {"short_lead", "summary_flip", "attribution_repeat", "meta_source"}
 # Templates rarely come alone. Four or more rules over their limit in one text
 # (hints included) blocks delivery: 1.3% of the 388 human texts do that, the
 # templated forum post that prompted this scan hit six.
@@ -102,6 +115,9 @@ def scan(text: str, paper: bool = False) -> dict:
     prose = [p for p in paras if _han(p) >= 8]
     hits: dict[str, list[str]] = {k: [] for k, _, _ in RULES}
 
+    if prose and META_OPEN.match(prose[0]):
+        first = SENT.match(prose[0])
+        hits["meta_source"].append((first.group(0) if first else prose[0])[:40])
     long_paras = [p for p in prose if _han(p) >= 40]
     for p in long_paras:
         body = QUOTED.sub("", p)
@@ -133,8 +149,9 @@ def scan(text: str, paper: bool = False) -> dict:
     for p in prose:
         body = QUOTED.sub("", p)
         for m in COLON_LIST.finditer(body):
-            items = [x for x in LIST_SEP.split(m.group(1)) if x.strip()]
-            if len(items) >= 3 and all(_han(x) <= 10 for x in items[:3]):
+            head = re.split(r"[，,；;]", m.group(1))[0]  # the list is what follows the colon up to the first comma
+            items = [x for x in head.split("、") if x.strip()]
+            if len(items) >= 3 and all(_han(x) <= 8 for x in items[:3]):
                 hits["colon_list"].append(m.group(0)[:40])
         sents = [x.strip() for x in SENT.findall(body)]
         if len(sents) >= 2:
@@ -147,6 +164,8 @@ def scan(text: str, paper: bool = False) -> dict:
                     hits["aphorism"].append(last)
         for m in CALLBACK.finditer(body):
             hits["callback"].append(body[m.start():m.end() + 8])
+        for m in META_SOURCE.finditer(body):
+            hits["meta_source"].append(body[max(0, m.start() - 6):m.end() + 8])
         for m in PROCESS_I.finditer(body):
             hits["process_i"].append(body[max(0, m.start() - 6):m.end() + 6])
 
