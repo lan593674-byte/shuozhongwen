@@ -55,16 +55,11 @@ def test_plain_human_prose_passes():
 
 
 def test_hints_never_block():
-    text = PLAIN + "\n\n为什么她不肯走？这件事我想了很久。\n\n“灶”“锅”“柴”“火”都是她的“命”。\n"
-    r = ss.scan(text)
+    r = ss.scan(PLAIN + "\n\n为什么她不肯走？这件事说来话长，她在这屋里住了一辈子。\n")
     by = {x["rule"]: x for x in r["rules"]}
     assert r["passed"]
     assert by["self_qa"]["count"] >= 1 and not by["self_qa"]["gate"]
-    assert not by["scare_quotes"]["gate"]
-
-
-def test_paper_mode_skips_quote_rule():
-    assert rules(TEMPLATED, paper=True)["scare_quotes"]["skipped"]
+    assert by["meta_source"]["gate"]
 
 
 def test_gates_rarely_fire_on_human_calibration_texts():
@@ -74,6 +69,18 @@ def test_gates_rarely_fire_on_human_calibration_texts():
         return  # corpus not present (e.g. a minimal checkout)
     failed = sum(1 for t in texts if not ss.scan(t)["passed"])
     assert failed / len(texts) <= 0.04, (failed, len(texts))
+
+
+def test_paper_mode_skips_quote_rule():
+    assert rules(TEMPLATED, paper=True)["scare_quotes"]["skipped"]
+
+
+def test_meta_source_talk_is_caught():
+    text = "下面关于亚北极生活的内容，都出自本单元的课程页面和七段小讲座。春天冰面开裂，人不敢上冰，就靠回迁的鸭和雁过日子，冰化了再坐桦皮船去鱼多的地方。\n\n课程把这套描述当作整个北方森林带的代表，材料里只有两条讲到今天的克里人，打猎如今也是挣现金的活。\n"
+    by = {x["rule"]: x for x in ss.scan(text)["rules"]}
+    assert by["meta_source"]["count"] >= 2 and not by["meta_source"]["passed"]
+    clean = "春天冰面开裂，人不敢上冰，就靠回迁的鸭和雁过日子，冰化了再坐桦皮船去鱼多的地方，夏天住进河边的渔营。\n"
+    assert {x["rule"]: x for x in ss.scan(clean)["rules"]}["meta_source"]["passed"]
 
 
 def test_new_rules_and_stacking_on_the_templated_post():

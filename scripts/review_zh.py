@@ -11,7 +11,7 @@ does not call any model. It takes the JSON they returned and:
    whose evidence cannot be found is void. Any void dimension makes the whole
    review invalid: run a fresh judge again.
 2. Templates: structural AI templates the judge lists (agents/judge.md 模板腔)
-   count only with verbatim evidence; more than one fails the review.
+   count only with verbatim evidence; any one fails the review.
 3. Gate: literary genres need average >= 4.0 and every dimension >= 3;
    practical and argument texts need average >= 3.5 and every dimension >= 3;
    a "flat" verdict always fails.
@@ -59,7 +59,7 @@ PAPER_DIMENSIONS = [
 ]
 LITERARY = ("散文", "游记", "随笔", "小说", "演讲", "书评", "影评", "诗", "故事", "回忆", "文学")
 MIN_EVIDENCE = 8
-MAX_TEMPLATES = 1  # structural AI templates the judge quoted (agents/judge.md 模板腔); more fails
+MAX_TEMPLATES = 0  # structural AI templates the judge quoted (agents/judge.md 模板腔); any fails
 _STRIP = re.compile(r"[\s“”‘’\"'「」『』《》…\.。，,、；;：:！!？?—\-]+")
 
 
