@@ -160,7 +160,7 @@ def main() -> int:
     p.add_argument("--genre", required=True, help="文体，如 城市随笔散文、周报、知乎回答、课程设计报告")
     p.add_argument("--review", required=True, help="评委子代理返回的 JSON（文件路径）")
     p.add_argument("--facts", help="事实核查子代理返回的 JSON（文件路径）")
-    p.add_argument("--own", action="store_true", help="稿子是自己从头写的：事实存疑要改到 0 才算过；不加则存疑项只列给作者")
+    p.add_argument("--own", action="store_true", help="只给题目、没有材料的稿子：事实存疑要改到 0 才算过；不加则存疑项只列给作者")
     p.add_argument("--paper", action="store_true", help="论文模式：按 lunwen-judge 的六项和 3.5 分线判")
     p.add_argument("--original", help="论文模式：原稿文件，配合 --rigor")
     p.add_argument("--rigor", help="论文模式：严谨性审查子代理返回的 JSON（文件路径）")

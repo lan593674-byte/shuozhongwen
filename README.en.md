@@ -22,9 +22,9 @@ Type `/shuozhongwen <topic or path to draft>`:
 
 Pass bar: literary genres average ≥ 4 with every dimension ≥ 3; practical and argument texts average ≥ 3.5 with every dimension ≥ 3; not flat; zero doubtful facts.
 
-### Data fidelity (enforced whenever you revise an existing draft)
+### Data fidelity (enforced when revising a draft or writing from your material)
 
-Before touching someone else's draft the plugin loads the `baozhen` constraint skill: numbers, tables, citations and references, terms, hedges such as "possibly" or "mainly", causal direction and claims are never changed, removed or added. A figure that looks wrong, even one the fact checker flags, only goes into the "for the author to check" list of the report.
+Before revising a draft, or writing a new piece from material you provide, the plugin loads the `baozhen` constraint skill. When writing from material, not every figure has to be used, but whatever is used is copied exactly: no rounding, no conversions, no new numbers derived from it, and nothing filled in from the web. In both cases numbers, tables, citations and references, terms, hedges such as "possibly" or "mainly", causal direction and claims are never changed or invented, and when revising, never removed. A figure that looks wrong, even one the fact checker flags, only goes into the "for the author to check" list of the report.
 
 ### Clean invisible characters and garbled text: `/shuozhongwen qingli`
 
