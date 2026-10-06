@@ -125,7 +125,7 @@ def call_role(role: str, text: str, genre: str = "", original: str = "", model: 
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("path", help="稿件文件")
-    p.add_argument("--genre", required=True, help="文体，如 城市随笔散文、周报、知乎回答")
+    p.add_argument("--genre", required=True, help="文体，如 城市随笔散文、周报、网络问答")
     p.add_argument("--task", default="", help="任务：用户的题目或要求原话（评委据此判是否偏题）")
     p.add_argument("--model", help="临时指定模型，覆盖配置文件")
     p.add_argument("--no-facts", action="store_true", help="不做事实核查（论文模式本来就不做，外部事实由严谨性审查列给作者）")
