@@ -69,6 +69,7 @@ def score_job(cache, cfg, model, version, topic, stage, rep):
     if not t:
         return
     info = TOPICS[topic]
+    raw = ""
     try:
         raw = judge_api.chat(judge_api.rubric("judge"), judge_api.prompt("judge", t, info["genre"], task=info["task"]),
                              model, cfg["base"], cfg["key"], cfg["timeout"])
@@ -77,7 +78,7 @@ def score_job(cache, cfg, model, version, topic, stage, rep):
                "flat": r["flat"], "off_task": r["off_task"], "templates": [x.get("type") for x in r["templates"]],
                "devices": [x.get("type") for x in r["devices"]], "summary": r["summary"]}
     except Exception as error:
-        val = {"average": None, "error": f"{type(error).__name__}: {str(error)[:200]}"}
+        val = {"average": None, "error": f"{type(error).__name__}: {str(error)[:200]}", "raw": raw[:4000]}
     save(cache, key, val)
 
 
