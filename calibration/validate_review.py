@@ -1,7 +1,7 @@
 """Check that review_zh can tell good writing from bad before trusting it.
 
-Reviews a fixed sample with two models: classic literature passages, high-upvote
-Zhihu answers, AI samples from several models, and the three Rome versions
+Reviews a fixed sample with two models: classic literature passages, AI samples
+from several models, and the three Rome versions
 (DeepSeek original, first rewrite, flat v2). Writes calibration/REVIEW_VALIDATION.md.
 """
 
@@ -44,8 +44,6 @@ def main() -> int:
     items = []
     for stem, t in pick("human/鲁迅_*.txt", 3, 1) + pick("human/朱自清_*.txt", 3, 2) + pick("human/萧红_*.txt", 2, 3):
         items.append(("经典名作", stem, t, "散文或小说片段"))
-    for stem, t in pick("human/zhihu_*.txt", 8, 4):
-        items.append(("知乎高赞", stem, t, "知乎回答"))
     ai = []
     for m in ["deepseek-v4.1-flash", "kimi-k3", "glm-5.3", "doubao-seed-2.0-pro", "minimax-m3", "gpt-6-luna", "gpt-5.5", "claude-opus-5-5"]:
         ai += pick(f"ai/{m}__*.txt", 1, 5)
@@ -72,7 +70,7 @@ def main() -> int:
 
     lines = ["# 写作质量评审的有效性检验", "", "同一批已知优劣的文字，标明文体后交给两个模型分别评审（六项平均分，满分 5）。", "",
              "| 组别 | " + " | ".join(MODELS) + " | 判为白开水的比例 |", "|---|" + "---|" * (len(MODELS) + 1)]
-    for g in ["经典名作", "知乎高赞", "AI 样本"]:
+    for g in ["经典名作", "AI 样本"]:
         row = [g]
         flats = []
         for m in MODELS:

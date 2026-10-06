@@ -14,6 +14,7 @@ Tools:
   factcheck        正文 → 事实核查
   lunwen_judge     文体 + 正文 → 论文语言审读
   rigor            原稿 + 改稿 → 学术严谨性审查
+  compare          新稿 + 原稿 → 精修时的盲评对比（两种顺序各问一次）
   judge_status     当前用哪个接口、哪个模型、密钥找没找到（不显示密钥）
 Text can be passed directly (text / original) or as a file path (path / original_path).
 """
@@ -42,8 +43,19 @@ TEXT_PROPS = {
 }
 TOOLS = [
     {"name": "judge", "description": "用外部模型做 shuozhongwen 编辑审读：全新的一次请求，只带评分标准、文体和正文。返回核对后的结论（证据是否原文、模板腔、是否过线）和原始 JSON。",
-     "inputSchema": {"type": "object", "properties": {"genre": {"type": "string", "description": "文体，如 城市随笔散文、课程论坛帖、周报"}, **TEXT_PROPS},
+     "inputSchema": {"type": "object", "properties": {"genre": {"type": "string", "description": "文体，如 城市随笔散文、课程论坛帖、周报"},
+                                                     "task": {"type": "string", "description": "任务：用户的题目或要求原话，评委据此判是否偏题（可选）"},
+                                                     "short_material": {"type": "boolean", "description": "素材撑不起任务要的篇幅、修改报告已写明时设为 true：只因篇幅判偏题时只提示，不拦"},
+                                                     **TEXT_PROPS},
                      "required": ["genre"]}},
+    {"name": "compare", "description": "精修一步：把新稿和原稿交给对比评委，原稿在 A、新稿在 A 两种顺序各问一次（并行），两次都判新稿更好才换。返回两次的判断和结论。",
+     "inputSchema": {"type": "object", "properties": {
+         "genre": {"type": "string", "description": "文体"},
+         "task": {"type": "string", "description": "任务：第 2 步复述的那句"},
+         "text": {"type": "string", "description": "新稿全文（和 path 二选一）"}, "path": {"type": "string", "description": "新稿文件路径"},
+         "baseline": {"type": "string", "description": "原稿全文（和 baseline_path 二选一）"},
+         "baseline_path": {"type": "string", "description": "原稿文件路径"}},
+         "required": ["genre"]}},
     {"name": "factcheck", "description": "用外部模型做 shuozhongwen 事实核查：全新的一次请求，只带核查标准和正文全文。",
      "inputSchema": {"type": "object", "properties": {**TEXT_PROPS, "own": {"type": "boolean", "description": "只给题目、没有材料的稿子设为 true：存疑要改到 0"}}}},
     {"name": "lunwen_judge", "description": "用外部模型做 /shuozhongwen lunwen 的论文语言审读。",
@@ -69,6 +81,13 @@ def run_tool(name: str, args: dict) -> str:
     if name == "judge_status":
         ok, why = judge_config.ready()
         return judge_config.describe() + ("" if ok else "\n" + why)
+    if name == "compare":
+        ok, why = judge_config.ready("compare")
+        if not ok:
+            raise RuntimeError(why)
+        model, c, raws = judge_api.compare(_text(args), _text(args, "baseline", "baseline_path"),
+                                           str(args.get("genre", "")), str(args.get("task", "") or ""))
+        return f"评委模型：{model}\n{review_zh.compare_report(c)}\n\n原始 JSON：\n" + "\n".join(raws)
     role = {"judge": "judge", "factcheck": "factcheck", "lunwen_judge": "lunwen-judge", "rigor": "rigor"}[name]
     ok, why = judge_config.ready(role)
     if not ok:
@@ -76,10 +95,11 @@ def run_tool(name: str, args: dict) -> str:
     text = _text(args)
     genre = str(args.get("genre", ""))
     original = _text(args, "original", "original_path") if role == "rigor" else ""
-    model, raw = judge_api.call_role(role, text, genre, original)
+    model, raw = judge_api.call_role(role, text, genre, original, task=str(args.get("task", "") or ""))
     data = review_zh.load_json(raw)
     if role in ("judge", "lunwen-judge"):
-        r = review_zh.check_review(text, data, genre, paper=role == "lunwen-judge")
+        r = review_zh.check_review(text, data, genre, paper=role == "lunwen-judge", model=model,
+                                   short_material=bool(args.get("short_material")))
         report = review_zh.report(r, None)
     elif role == "factcheck":
         f = review_zh.check_facts(text, data, own=bool(args.get("own")))

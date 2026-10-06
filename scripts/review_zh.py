@@ -11,19 +11,31 @@ does not call any model. It takes the JSON they returned and:
    whose evidence cannot be found is void. Any void dimension makes the whole
    review invalid: run a fresh judge again.
 2. Templates: structural AI templates the judge lists (agents/judge.md 模板腔)
-   count only with verbatim evidence; more than one fails the review.
+   count only with verbatim evidence; more than one fails the review. Writing
+   devices (devices: 设问自答, 单句成段, 前后回扣, 冒号清单, 段尾警句) are common
+   in human prose too, so they are listed for the writer and never fail a review.
 3. Gate: literary genres need average >= 4.0 and every dimension >= 3;
-   practical and argument texts need average >= 3.5 and every dimension >= 3;
-   a "flat" verdict always fails.
-4. Facts: claims marked "doubt" block delivery only for the writer's own draft
+   practical and argument texts need average >= 3.5 and every dimension >= 3.
+   A judge model calibrated by calibration/calibrate_judge.py has its own lines
+   in judge_thresholds.json (set from how that model scores human writing);
+   pass --judge-model to use them;
+   a "flat" verdict always fails, and so does "off_task" (the judge was given
+   the task and the text does not do what it asks). One exception: when the
+   judge says only the length is off (off_task_kind 篇幅) and the writer has
+   flagged that the material cannot fill the asked length (--short-material),
+   the length is reported as a reminder and does not fail.
+4. Compare (精修): check_compare() reads the two replies of the compare judge
+   (agents/compare.md), asked in both orders; the new draft replaces the old
+   one only when it wins both.
+5. Facts: claims marked "doubt" block delivery only for the writer's own draft
    (--own). In someone else's draft the data is locked: doubts are listed for the
    author and the text is never changed because of them.
-5. Paper mode (--paper, /shuozhongwen lunwen): the language judge's six academic
+6. Paper mode (--paper, /shuozhongwen lunwen): the language judge's six academic
    dimensions, gate average >= 3.5 and every dimension >= 3; with --original and
    --rigor, any verbatim-quoted regression in academic rigor fails.
 
 Usage:
-  review_zh.py 稿件 --genre 城市随笔散文 --review 审读.json [--facts 核查.json] [--own]
+  review_zh.py 稿件 --genre 城市随笔散文 --review 审读.json [--facts 核查.json] [--own] [--judge-model 模型名] [--short-material]
   review_zh.py 改稿 --genre 课程设计报告 --paper --review 审读.json --original 原稿 --rigor 严谨.json
 Exit code 0 = passed.
 """
@@ -32,6 +44,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -63,20 +76,73 @@ MAX_TEMPLATES = 1  # structural AI templates the judge quoted (agents/judge.md �
 _STRIP = re.compile(r"[\s“”‘’\"'「」『』《》…\.。，,、；;：:！!？?—\-]+")
 
 
-def gate(genre: str) -> tuple[float, int]:
-    return (4.0, 3) if any(g in genre for g in LITERARY) else (3.5, 3)
+THRESHOLDS = Path(__file__).resolve().parent / "judge_thresholds.json"
+
+
+def thresholds() -> dict:
+    path = Path(os.environ.get("SHUOZHONGWEN_THRESHOLDS") or THRESHOLDS)
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else {}
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def gate(genre: str, model: str | None = None) -> tuple[float, int, str]:
+    """(average line, each-dimension minimum, where the line comes from). A judge
+    model calibrated on human writing (calibration/calibrate_judge.py) has its own
+    lines; any other judge, Claude subagents included, gets the fixed ones."""
+    kind = "literary" if any(g in genre for g in LITERARY) else "practical"
+    models = {k.lower(): v for k, v in (thresholds().get("models") or {}).items()}
+    line = (models.get((model or "").lower()) or {}).get(kind)
+    if isinstance(line, dict) and "average" in line:
+        return float(line["average"]), int(line.get("each", 3)), f"{model} 的校准分数线"
+    return (4.0, 3, "固定分数线") if kind == "literary" else (3.5, 3, "固定分数线")
 
 
 def _norm(s: str) -> str:
     return _STRIP.sub("", s or "")
 
 
+def _escape_inner_quotes(s: str) -> str:
+    """Escape ASCII double quotes inside JSON strings that the model forgot to
+    escape (a quoted word inside an evidence quote). A quote closes a string only
+    when the next non-space character is , : } or ]."""
+    out, in_str, i = [], False, 0
+    while i < len(s):
+        c = s[i]
+        if in_str and c == "\\":
+            out.append(s[i:i + 2])
+            i += 2
+            continue
+        if c == '"':
+            if not in_str:
+                in_str = True
+            else:
+                j = i + 1
+                while j < len(s) and s[j] in " \t\r\n":
+                    j += 1
+                if j >= len(s) or s[j] in ",:}]":
+                    in_str = False
+                else:
+                    out.append('\\"')
+                    i += 1
+                    continue
+        out.append(c)
+        i += 1
+    return "".join(out)
+
+
 def load_json(raw: str) -> dict:
-    """Accept the subagent's reply as-is: pure JSON, or JSON wrapped in prose/fences."""
+    """Accept the subagent's reply as-is: pure JSON, or JSON wrapped in prose/fences.
+    Unescaped quotes inside strings are repaired before giving up."""
     m = re.search(r"\{.*\}", raw, re.S)
     if not m:
         raise ValueError("no JSON object found")
-    return json.loads(m.group(0))
+    try:
+        return json.loads(m.group(0))
+    except json.JSONDecodeError:
+        return json.loads(_escape_inner_quotes(m.group(0)))
 
 
 def quoted(text: str, evidence: str) -> bool:
@@ -84,8 +150,9 @@ def quoted(text: str, evidence: str) -> bool:
     return len(ev) >= MIN_EVIDENCE and ev in _norm(text)
 
 
-def check_review(text: str, review: dict, genre: str, paper: bool = False) -> dict:
-    avg_min, dim_min = (3.5, 3) if paper else gate(genre)
+def check_review(text: str, review: dict, genre: str, paper: bool = False, model: str | None = None,
+                 short_material: bool = False) -> dict:
+    avg_min, dim_min, source = (3.5, 3, "固定分数线") if paper else gate(genre, model)
     scores = review.get("scores", {})
     dims, void = {}, []
     for key, label in (PAPER_DIMENSIONS if paper else DIMENSIONS):
@@ -97,17 +164,45 @@ def check_review(text: str, review: dict, genre: str, paper: bool = False) -> di
     valid = not void
     average = round(sum(dims.values()) / len(dims), 2) if dims else None
     flat = bool(review.get("flat"))
+    off_task = review.get("off_task") is True
+    kind = str(review.get("off_task_kind", "") or "").strip()
+    # only the length is off, and the writer said the material cannot fill it: a reminder, not a failure
+    length_only = off_task and kind in ("篇幅", "length") and short_material
     templates = [t for t in review.get("templates", [])
                  if isinstance(t, dict) and quoted(text, str(t.get("evidence", "")))]
+    devices = [t for t in review.get("devices", [])
+               if isinstance(t, dict) and quoted(text, str(t.get("evidence", "")))]
     passed = (valid and average is not None and average >= avg_min and all(v >= dim_min for v in dims.values())
-              and not flat and len(templates) <= MAX_TEMPLATES)
+              and not flat and (not off_task or length_only) and len(templates) <= MAX_TEMPLATES)
     weakest = sorted(dims, key=lambda k: dims[k])[:2] if dims else []
     return {"valid": valid, "void": void, "dims": dims, "average": average, "flat": flat, "paper": paper,
-            "gate": {"average": avg_min, "each": dim_min}, "passed": passed, "weakest": weakest,
+            "gate": {"average": avg_min, "each": dim_min, "source": source}, "passed": passed, "weakest": weakest,
             "fixes": {k: scores[k].get("fix", "") for k in dims if k in scores},
             "cliche": [c for c in review.get("cliche", []) if quoted(text, c)],
-            "templates": templates,
+            "templates": templates, "devices": devices,
+            "off_task": off_task, "off_task_kind": kind, "length_only": length_only,
+            "task_note": str(review.get("task_note", "") or ""),
             "summary": review.get("summary", "")}
+
+
+def check_compare(base_in_a: dict, new_in_a: dict) -> dict:
+    """Two replies of the compare judge: the first had the original draft as A and
+    the polished one as B, the second the other way round. The polished draft
+    replaces the original only when it wins both orders."""
+    votes = []
+    for data, new_pos, order in ((base_in_a, "B", "原稿在 A"), (new_in_a, "A", "新稿在 A")):
+        pick = str(data.get("better", "")).strip().upper()[:1]
+        winner = None if pick not in ("A", "B") else ("new" if pick == new_pos else "base")
+        votes.append({"order": order, "winner": winner, "margin": str(data.get("margin", "") or ""),
+                      "reason": str(data.get("reason", "") or "")})
+    return {"votes": votes, "replace": all(v["winner"] == "new" for v in votes)}
+
+
+def compare_report(c: dict) -> str:
+    name = {"new": "新稿", "base": "原稿", None: "（没给出 A 或 B，作废）"}
+    out = [f"对比评委（{v['order']}）：{name[v['winner']]}{v['margin']}更好。{v['reason']}" for v in c["votes"]]
+    out.append("结论：换成新稿（两次都判新稿更好），新稿再走一次第 5 步" if c["replace"] else "结论：交原稿（新稿没有两次都胜）")
+    return "\n".join(out)
 
 
 def check_facts(text: str, facts: dict, own: bool = False) -> dict:
@@ -137,8 +232,15 @@ def report(r: dict, f: dict | None, g: dict | None = None) -> str:
     if not r["valid"]:
         out.append(f"审读无效：{('、'.join(r['void']))} 的证据在原文里找不到，这几项分数作废。换一个全新的评委子代理重审。")
     dims = "、".join(f"{zh[k]} {v}" for k, v in r["dims"].items())
-    out.append(f"{'语言审读' if r.get('paper') else '编辑审读'}：平均 {r['average']}（要求 ≥{r['gate']['average']}），{dims}（要求都 ≥{r['gate']['each']}），"
+    source = r["gate"].get("source", "固定分数线")
+    out.append(f"{'语言审读' if r.get('paper') else '编辑审读'}：平均 {r['average']}（要求 ≥{r['gate']['average']}，{source}），{dims}（要求都 ≥{r['gate']['each']}），"
                f"白开水：{'是' if r['flat'] else '否'}")
+    if r.get("length_only"):
+        out.append(f"  篇幅提醒（素材不足，不拦交付）：{r.get('task_note') or '篇幅和任务要求不符'}；修改报告第一条写明差多少、缺什么")
+    elif r.get("off_task"):
+        out.append(f"  偏题（未通过）：{r.get('task_note') or '正文没做任务要求的事'}")
+        if r.get("off_task_kind") in ("篇幅", "length"):
+            out.append("  只差篇幅：素材确实撑不起的，不凑字，按 SKILL.md 第 6 步加 --short-material 复审")
     if r["valid"] and not r["passed"]:
         for k in r["weakest"]:
             out.append(f"  先改 {zh[k]}：{r['fixes'].get(k, '')}")
@@ -146,6 +248,9 @@ def report(r: dict, f: dict | None, g: dict | None = None) -> str:
         state = "" if len(r["templates"]) <= MAX_TEMPLATES else f"（超过 {MAX_TEMPLATES} 处，未通过）"
         out.append(f"  模板腔 {len(r['templates'])} 处{state}：" + "；".join(
             f"{t.get('type', '')}「{str(t.get('evidence', ''))[:30]}」" for t in r["templates"]))
+    if r.get("devices"):
+        out.append(f"  手法重复 {len(r['devices'])} 处（只提醒，不算未通过；同一种手法别拿来搭架子）：" + "；".join(
+            f"{t.get('type', '')}「{str(t.get('evidence', ''))[:30]}」" for t in r["devices"]))
     if r["cliche"]:
         out.append("  套话：" + "；".join(r["cliche"]))
     if f is not None:
@@ -168,19 +273,22 @@ def report(r: dict, f: dict | None, g: dict | None = None) -> str:
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("path", help="稿件文件（论文模式下是改稿）")
-    p.add_argument("--genre", required=True, help="文体，如 城市随笔散文、周报、知乎回答、课程设计报告")
+    p.add_argument("--genre", required=True, help="文体，如 城市随笔散文、周报、网络问答、课程设计报告")
     p.add_argument("--review", required=True, help="评委子代理返回的 JSON（文件路径）")
     p.add_argument("--facts", help="事实核查子代理返回的 JSON（文件路径）")
     p.add_argument("--own", action="store_true", help="只给题目、没有材料的稿子：事实存疑要改到 0 才算过；不加则存疑项只列给作者")
     p.add_argument("--paper", action="store_true", help="论文模式：按 lunwen-judge 的六项和 3.5 分线判")
     p.add_argument("--original", help="论文模式：原稿文件，配合 --rigor")
     p.add_argument("--rigor", help="论文模式：严谨性审查子代理返回的 JSON（文件路径）")
+    p.add_argument("--judge-model", help="给出这份审读的评委模型名：校准过的模型用它自己的分数线（scripts/judge_thresholds.json）")
+    p.add_argument("--short-material", action="store_true", help="素材撑不起任务要的篇幅、修改报告已写明：评委只因篇幅判偏题时只提示，不拦")
     p.add_argument("--json", action="store_true")
     a = p.parse_args()
     if a.rigor and not a.original:
         p.error("--rigor needs --original")
     text = read_any(a.path)
-    r = check_review(text, load_json(Path(a.review).read_text(encoding="utf-8")), a.genre, paper=a.paper)
+    r = check_review(text, load_json(Path(a.review).read_text(encoding="utf-8")), a.genre, paper=a.paper,
+                     model=a.judge_model, short_material=a.short_material)
     f = check_facts(text, load_json(Path(a.facts).read_text(encoding="utf-8")), own=a.own) if a.facts else None
     g = (check_rigor(read_any(a.original), text, load_json(Path(a.rigor).read_text(encoding="utf-8")))
          if a.rigor else None)

@@ -4,6 +4,9 @@ When a message is complete it may append a footer to the displayed text:
 
 1. AI 相似度: when the reply has at least SHUOZHONGWEN_SCORE_MIN (default 250)
    characters of prose outside code, one line with the Chinese stylometry score.
+   A /shuozhongwen delivery puts the article first and the revision report after
+   a 【修改报告】 line; only the article is scored then, because the report's
+   lists and key-value lines alone push any article into the high tier.
 2. 检测: right after it, what the checks found: invisible characters or
    garbled text in the reply itself, and in files written since the last
    reply (saved by the PostToolUse hook, see scripts/hook_state.py). This
@@ -22,6 +25,7 @@ turn the check line off.
 
 import json
 import os
+import re
 import sys
 import time
 from datetime import datetime, timezone
@@ -35,6 +39,16 @@ LOGS = Path(os.environ.get("SHUOZHONGWEN_LOG_DIR") or ROOT / "logs")
 PENDING = LOGS / "pending"
 TIER_ZH = {"low": "低", "medium": "中", "high": "高"}
 MAX_FILES_LISTED = 5
+# The revision report that follows a /shuozhongwen delivery: 【修改报告】, ## 修改报告, **修改报告**
+REPORT_HEAD = re.compile(r"^[ \t]*(?:#{1,6}[ \t]*|\*\*)?【?修改报告】?(?:\*\*)?[ \t]*[:：]?[ \t]*$", re.M)
+
+
+def article_part(text: str) -> tuple[str, bool]:
+    """The part of a reply to score: everything before the revision report, if there is one."""
+    m = REPORT_HEAD.search(text)
+    if not m:
+        return text, False
+    return text[:m.start()].rstrip().removesuffix("---").rstrip(), True
 
 
 def score_line(text: str, status: dict) -> str:
@@ -43,6 +57,7 @@ def score_line(text: str, status: dict) -> str:
     import score_zh
 
     minimum = int(os.environ.get("SHUOZHONGWEN_SCORE_MIN", "250"))
+    text, split = article_part(text)
     length = score_zh.han_len(score_zh.strip_code(text))
     status["chars"] = length
     if length < minimum:
@@ -50,13 +65,14 @@ def score_line(text: str, status: dict) -> str:
     report = score_zh.score_text_stylometry(text, path="<reply>")
     if report.score is None:
         return ""
-    status.update(score=round(report.score, 3), tier=report.density_tier)
+    status.update(score=round(report.score, 3), tier=report.density_tier, article_only=split)
     pct = report.human_percentile
     where = (f"比 {pct}% 的人类段落更像 AI" if report.density_tier == "high" and pct is not None
              else "在人类文字的常见区间内")
     items = "、".join(f.split("（")[0] for f in report.findings) if report.density_tier == "high" else ""
     tail = f"｜可改：{items}" if items else ""
-    return f"*AI 相似度 {report.score:.2f}（{TIER_ZH.get(report.density_tier, report.density_tier)}，{where}）{tail}*"
+    what = "正文 AI 相似度（不含修改报告）" if split else "AI 相似度"
+    return f"*{what} {report.score:.2f}（{TIER_ZH.get(report.density_tier, report.density_tier)}，{where}）{tail}*"
 
 
 def check_line(text: str, session_id: str | None, status: dict) -> str:

@@ -53,6 +53,52 @@ def test_flat_always_fails():
     assert not review_zh.check_review(TEXT, review(5, flat=True), "周报")["passed"]
 
 
+def test_more_than_one_template_fails_devices_are_only_listed():
+    s = review(5)
+    s["templates"] = [{"type": "总结翻转", "evidence": "罗马人拆自己的城，拆了两千年"}]
+    assert review_zh.check_review(TEXT, s, "城市随笔散文")["passed"]
+    s["templates"].append({"type": "滥用引号", "evidence": "外墙上那一排排碗口大的坑"})
+    assert not review_zh.check_review(TEXT, s, "城市随笔散文")["passed"]
+    # devices (设问自答, 单句成段 ...) are common in human prose: listed, never failing
+    d = review(5)
+    d["devices"] = [{"type": "设问自答", "evidence": "斗兽场缺的那半圈"},
+                    {"type": "前后回扣", "evidence": "没有一只在乎这里死过谁"},
+                    {"type": "单句转折段", "evidence": "编出来的句子不在原文里"}]
+    r = review_zh.check_review(TEXT, d, "城市随笔散文")
+    assert r["passed"] and len(r["devices"]) == 2
+    assert "手法重复 2 处" in review_zh.report(r, None)
+
+
+def test_off_task_fails_with_the_judges_note():
+    s = review(5)
+    s["off_task"], s["task_note"] = True, "任务要对比两地，正文只写了罗马"
+    r = review_zh.check_review(TEXT, s, "游记散文")
+    assert not r["passed"] and "只写了罗马" in review_zh.report(r, None)
+    s["off_task"] = "false"  # anything but a real true is not a verdict
+    assert review_zh.check_review(TEXT, s, "游记散文")["passed"]
+
+
+def test_length_only_off_task_is_a_reminder_when_the_material_is_short():
+    s = review(5)
+    s["off_task"], s["off_task_kind"], s["task_note"] = True, "篇幅", "要一千字，正文三百多字"
+    r = review_zh.check_review(TEXT, s, "散文")
+    assert not r["passed"] and "--short-material" in review_zh.report(r, None)
+    r = review_zh.check_review(TEXT, s, "散文", short_material=True)
+    assert r["passed"] and r["length_only"] and "篇幅提醒" in review_zh.report(r, None)
+    s["off_task_kind"] = "内容"  # really off task: the flag does not help
+    assert not review_zh.check_review(TEXT, s, "散文", short_material=True)["passed"]
+
+
+def test_compare_needs_the_new_draft_to_win_both_orders():
+    a, b = {"better": "A", "margin": "明显"}, {"better": "B", "margin": "略微"}
+    # first reply has the original as A, second has the new draft as A
+    assert review_zh.check_compare(b, a)["replace"]
+    c = review_zh.check_compare(a, a)  # A both times: position, not quality
+    assert not c["replace"] and [v["winner"] for v in c["votes"]] == ["base", "new"]
+    assert not review_zh.check_compare(b, {"better": "都好"})["replace"]
+    assert "交原稿" in review_zh.compare_report(c)
+
+
 def test_facts_doubt_blocks_own_draft_rhetoric_does_not():
     ok = {"claims": [{"text": "拆了两千年", "verdict": "rhetoric"}, {"text": "一三四九年的地震", "verdict": "ok"}]}
     bad = {"claims": [{"text": "一三四九年的地震", "verdict": "doubt", "note": "x"}]}
@@ -92,3 +138,25 @@ def test_rigor_regression_needs_both_quotes_and_fails():
 
 def test_load_json_tolerates_wrapping():
     assert review_zh.load_json('好的：```json\n{"claims": []}\n```')["claims"] == []
+
+
+def test_calibrated_judge_model_uses_its_own_line(tmp_path, monkeypatch):
+    t = tmp_path / "th.json"
+    t.write_text('{"models": {"strict-model": {"literary": {"average": 3.5, "each": 3}, '
+                 '"practical": {"average": 3.0, "each": 3}}}}', encoding="utf-8")
+    monkeypatch.setenv("SHUOZHONGWEN_THRESHOLDS", str(t))
+    s = review(4)
+    s["scores"]["voice"]["score"] = 3
+    s["scores"]["rhythm"]["score"] = 3
+    s["scores"]["insight"]["score"] = 3   # average 3.5
+    assert not review_zh.check_review(TEXT, s, "游记散文")["passed"]                 # fixed line 4.0
+    r = review_zh.check_review(TEXT, s, "游记散文", model="Strict-Model")             # calibrated 3.5
+    assert r["passed"] and r["gate"]["source"] == "Strict-Model 的校准分数线"
+    assert review_zh.check_review(TEXT, s, "周报", model="other-model")["gate"]["average"] == 3.5
+    assert "校准分数线" in review_zh.report(r, None)
+
+
+def test_load_json_repairs_unescaped_quotes_inside_strings():
+    raw = '{"scores": {"concrete": {"score": 4, "evidence": "他说"好"就走了，没有回头", "fix": "x"}}, "flat": false}'
+    d = review_zh.load_json(raw)
+    assert d["scores"]["concrete"]["evidence"] == '他说"好"就走了，没有回头' and d["flat"] is False

@@ -1,0 +1,39 @@
+{
+ "calibrated": "2026-10-06",
+ "rubric": "agents/judge.md",
+ "repeats": 3,
+ "rule": "文学分数线 = 该模型给经典名作每篇平均分的第 25 百分位，向下取到 0.25，限制在 3.0 到 4.0 之间；实用和议论文字没有人类参照文本，固定 3.5；每项最低分仍是 3",
+ "default": {
+  "literary": {
+   "average": 4.0,
+   "each": 3
+  },
+  "practical": {
+   "average": 3.5,
+   "each": 3
+  }
+ },
+ "models": {
+  "deepseek-v4-pro": {
+   "literary": {
+    "average": 4.0,
+    "each": 3
+   },
+   "noise_sd": 0.14
+  },
+  "glm-5.3": {
+   "literary": {
+    "average": 4.0,
+    "each": 3
+   },
+   "noise_sd": 0.05
+  },
+  "kimi-k3": {
+   "literary": {
+    "average": 4.0,
+    "each": 3
+   },
+   "noise_sd": 0.09
+  }
+ }
+}

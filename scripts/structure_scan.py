@@ -26,7 +26,8 @@ of the argument is fine.
 
 Blocking: short_lead, summary_flip, attribution_repeat, meta_source, and
 stacking (four or more rules of any kind over their limit). The rest are hints.
-On the 388 human calibration texts the blocking rules fail 3.1%.
+On the 111 human texts in calibration/human and calibration/test the blocking
+rules fail 2.7%.
 Dialogue (text inside quotation marks) and headings are not scanned.
 
 Usage: structure_scan.py 稿件 [--paper] [--json]   exit 0 = passed
@@ -90,16 +91,19 @@ LIMITS = {"short_lead": 0.30, "one_line_para": 1, "self_qa": 1, "summary_flip": 
           "attribution_repeat": 5, "colon_list": 2, "aphorism": 1, "callback": 0, "process_i": 0, "meta_source": 0,
           "source_mention": 0}
 # These block delivery; limits were set on the calibration corpus. The rest are
-# common in human writing too (Zhihu answers ask and answer questions, quote
-# words, use one-line paragraphs), so they are hints. Making every rule zero
-# tolerance was tried on 2026-10-05 and failed 88% of the human texts.
+# common in human writing too (web novels and Tieba posts ask and answer
+# questions, quote words and use one-line paragraphs more often than AI text
+# does), so they are hints. Zero tolerance on every rule fails 77% of the human
+# texts in calibration/human and calibration/test.
 GATES = {"short_lead", "summary_flip", "attribution_repeat", "meta_source"}
 # Templates rarely come alone. Four or more rules over their limit in one text
-# (hints included) blocks delivery: 1.3% of the 388 human texts do that, the
-# templated forum post that prompted this scan hit six.
+# (hints included) blocks delivery: none of the 111 human texts in
+# calibration/human and calibration/test do that, the templated forum post that
+# prompted this scan hit six.
 STACK_LIMIT = 3
 SHORT_LEAD_MIN = 3        # at least this many hits before the share counts
 SHORT_LEAD_MAX_HAN = 10   # a "short verdict" opener has at most this many Han characters
+OPENER_MAX_HAN = 20       # listed for review (not counted): what the judges call 段首短判断
 
 
 def _han(s: str) -> int:
@@ -218,20 +222,35 @@ def scan(text: str, paper: bool = False) -> dict:
             passed &= ok
         rules.append({"rule": key, "label": label, "count": len(found), "value": value, "limit": limit,
                       "passed": ok, "gate": gate, "hits": found[:12]})
-    # 能不用引号就不用：every quotation outside dialogue and attributed speech is listed
-    # for the writer to reconsider. Informational only: it neither blocks nor counts
-    # toward stacking (revisions must keep the author's own quotes).
-    quotes = []
+    # 能不用引号就不用. In human prose most quotation marks hold a whole sentence
+    # someone said (classics 51%, web novels and Tieba 82%); in model output most sit
+    # on a single word or label (59%; Claude 64%): “上瘾模型” “参考地图” “一点点”.
+    # Counted per piece the two overlap (people quote names and terms too), so this
+    # never blocks: the word and phrase quotes are listed for the remove-the-quotes
+    # test, and revisions keep the author's own quotes.
+    quotes, sentence_quotes = [], 0
     for p in prose:
-        for m in re.finditer(r"“([^”\n]{1,40})”", p):
-            before = p[max(0, m.start() - 6):m.start()]
-            if not SPEECH_BEFORE.search(before) and not re.search(r"[。！？!?]$", m.group(1)):
+        for m in re.finditer(r"“([^”\n]{1,80})”", p):
+            inner, before = m.group(1), p[max(0, m.start() - 6):m.start()]
+            if re.search(r"[。！？!?…，,；;：:]", inner) or _han(inner) > 12:
+                sentence_quotes += 1
+            elif not SPEECH_BEFORE.search(before):
                 quotes.append(m.group(0))
+    # Paragraphs that open with one short sentence (20 Han characters or fewer).
+    # The judges' 段首短判断 is wider than the short_lead gate above (they flag
+    # "从这个冬至到下一个冬至是一年。" and "可太阳走得并不匀。"), but a short
+    # opener is just as often plain narration (classics: 58% of pieces have three),
+    # so this only lists them for the writer to check, and never blocks.
+    openers = []
+    for p in long_paras:
+        first = SENT.match(QUOTED.sub("", p))
+        if first and _han(first.group(0)) <= OPENER_MAX_HAN and first.group(0).rstrip()[-1] in "。":
+            openers.append(first.group(0).strip())
     over = [r["label"] for r in rules if not r["passed"]]
     stacked = len(over) > STACK_LIMIT
     return {"passed": passed and not stacked, "paragraphs": len(prose), "long_paragraphs": len(long_paras),
             "rules": rules, "stacked": {"count": len(over), "limit": STACK_LIMIT, "passed": not stacked, "rules": over},
-            "quotes": quotes}
+            "quotes": quotes, "sentence_quotes": sentence_quotes, "openers": openers}
 
 
 def report(r: dict) -> str:
@@ -247,7 +266,13 @@ def report(r: dict) -> str:
             for h in rule["hits"]:
                 out.append(f"    {h[:60]}")
     if r.get("quotes"):
-        out.append(f"引号（能不用就不用）：{len(r['quotes'])} 处，逐处看能不能去掉：" + "、".join(r["quotes"][:12]))
+        out.append(f"引号套在词和短语上 {len(r['quotes'])} 处（引整句的 {r.get('sentence_quotes', 0)} 处不算）："
+                   "人类文字里引号多半引整句，AI 多半套在词上。逐处去掉引号再读，意思不变就别加："
+                   + "、".join(r["quotes"][:12]))
+    if len(r.get("openers", [])) >= 2:
+        out.append(f"段首第一句很短的段落 {len(r['openers'])} 个（不拦，逐处看）：这一句是结论、判断或报幕的，"
+                   "改成从具体的人、物、时间、数字写起，判断放到后面；写的是事实就留着："
+                   + "｜".join(r["openers"][:8]))
     st = r.get("stacked")
     if st:
         state = "" if st["passed"] else "  ← 未通过：套路叠在一起，读者一眼就能看出来"

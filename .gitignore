@@ -6,3 +6,4 @@ calibration/raw/
 logs/
 calibration/rejected/
 calibration/samples/
+calibration/writing_test/**/eval_cache.json

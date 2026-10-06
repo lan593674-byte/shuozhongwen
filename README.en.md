@@ -4,7 +4,7 @@
 
 A Chinese-writing plugin for AI agents. It writes or revises a Chinese article with three goals at once: **keep the facts intact, lose the machine-translated "AI tone", and actually write well**.
 
-Stripping AI tells alone tends to leave flat, lifeless prose. This plugin changes the order: identify the genre and decide what the piece has to say before writing; then hand the draft to a **fresh judge** that must back every score with a verbatim quote from the text (a score it cannot quote is void); revise from that evidence with a new judge each round, and stop as soon as the bar is met. The statistical "AI-likeness" score is a guardrail, never a target.
+Stripping AI tells alone tends to leave flat, lifeless prose. A weak first draft is rarely a sentence-level problem either: the writer had no concrete material and no clear point, so templates and stock phrases filled the space. This plugin therefore settles the main thread and insight before drafting; only after the draft is written does it scan for templates and hand the text to a **fresh judge** that must back every score with a verbatim quote from the text (a score it cannot quote is void); it revises from that evidence with a new judge each round and stops once the bar is met; literary pieces then get one polishing round, kept only if a blind comparison prefers it in both orders. The statistical "AI-likeness" score is a guardrail, never a target.
 
 Works as a full Claude Code plugin (subagents and hooks included) and as an Agent Skill for Codex, Cursor, Gemini CLI and other agents. The judge can be any model behind an OpenAI-compatible API.
 
@@ -12,15 +12,16 @@ Works as a full Claude Code plugin (subagents and hooks included) and as an Agen
 
 Type `/shuozhongwen <topic or path to draft>`:
 
-1. **Genre and standard**: practical text (reports, notices, plans) must be accurate and concise; argument must hold up; literary writing (essays, travel writing, fiction, reviews) must be good writing. The genre sets the pass bar.
-2. **Thread, insight, fact ledger**: when revising someone else's draft, numbers, names, terms and causal directions are locked; missing details are never invented, only listed as "details to ask the author for".
-3. **Write or revise** from meaning, not sentence by sentence.
-4. **Editorial review and fact check** by two fresh subagents that see only the genre, the text and the rubric. Six dimensions: concrete detail, insight, language and imagery, rhythm, structure and tension, voice.
-5. **Revise from evidence**: `review_zh.py` verifies each quote is verbatim and applies the bar. Weakest dimensions get fixed, a new judge re-reviews; at most three rounds.
-6. **Hard gate**: `polish_check.py` checks invisible characters, four mechanical scans and the AI-likeness score.
-7. **Deliver** the text with a short revision report.
+1. **Genre and standard**: practical text (reports, notices, plans) must be accurate and concise; argument must hold up; literary writing (essays, travel writing, fiction, reviews) must be good writing. The genre follows what the task asks for and sets the pass bar.
+2. **Main thread and insight, facts locked**: before writing, answer what the one insight only this piece has is, and which thread ties the material together. When revising or writing from your material, a data ledger first (numbers, names, terms, citations, causal directions), used verbatim, nothing added; with only a topic, only real details that check out, never invented first-person experience.
+3. **Draft** along the main thread: one thing per paragraph, facts and details first, judgement after them, straight into the subject; the ending lands on the task's core question instead of opening a new topic. Attention goes to content; template checks come after the draft.
+4. **Self-check**: `polish_check.py` (invisible characters, four mechanical scans, structural templates, AI-likeness), then reread against the main thread and the data ledger.
+5. **Editorial review and fact check** by two fresh judges that see only the genre, the task, the text and the rubric. Six dimensions: concrete detail, insight (selection, for expository text), language and imagery, rhythm, structure and tension, voice; plus whether the text is off task.
+6. **Revise from evidence**: `review_zh.py` verifies each quote is verbatim and applies the bar. The weak paragraph is rewritten along the main thread; missing material is asked for or researched, never faked with manufactured verdicts, aphorisms or rhetorical questions. A new judge re-reviews; at most three rounds. When only the length falls short because the material cannot fill it, the text is not padded and the length is a reminder, not a failure.
+7. **Polish** (literary only): one more round on a copy after passing, adding unused details from the material and cutting sentences that explain characters' thoughts; a fresh compare judge sees both drafts in both orders, and the new one is delivered only if it wins both and passes review again.
+8. **Deliver** the text, then a line `【修改报告】` and the revision report.
 
-Pass bar: literary genres average ≥ 4 with every dimension ≥ 3; practical and argument texts average ≥ 3.5 with every dimension ≥ 3; not flat; zero doubtful facts.
+Pass bar: literary genres average ≥ 4 with every dimension ≥ 3; practical and argument texts average ≥ 3.5 with every dimension ≥ 3; not flat; not off task; at most one AI template the judge can quote (strings of short verdict openers, announcing sentences, wrap-up formulas, scare quotes, invented first-person experience, preambles about sources). Rhetorical questions, one-line paragraphs and callbacks are common in human prose and are only flagged, never blocking (see `calibration/TEMPLATE_AUDIT.md`). Zero doubtful facts for a piece written from a bare topic.
 
 ### Data fidelity (enforced when revising a draft or writing from your material)
 
@@ -50,7 +51,7 @@ claude plugin marketplace add lan593674-byte/shuozhongwen
 claude plugin install shuozhongwen@shuozhongwen
 ```
 
-Then type `/shuozhongwen`. The judge and fact checker are the `shuozhongwen:judge` and `shuozhongwen:factcheck` subagents, running on the same model as your session.
+Then type `/shuozhongwen`. The judge, fact checker and compare judge are the `shuozhongwen:judge`, `shuozhongwen:factcheck` and `shuozhongwen:compare` subagents, running on the same model as your session.
 
 ### Codex, Cursor, Gemini CLI and other agents
 
@@ -68,7 +69,7 @@ Agents without subagents can use `judge_api.py` below, or ask you to paste the r
 
 ### Another model as the judge (recommended)
 
-A model grading its own draft is too lenient: it does not see its own habits and tends to reward them. The plugin ships an MCP server (`scripts/judge_mcp.py`, started by Claude Code with the plugin) with the tools `judge`, `factcheck`, `lunwen_judge`, `rigor` and `judge_status`. Each call is a fresh request carrying only the rubric and the text, and the result is already checked by `review_zh.py`. The `/shuozhongwen` workflow uses it first and falls back to subagents when it is not configured.
+A model grading its own draft is too lenient: it does not see its own habits and tends to reward them. The plugin ships an MCP server (`scripts/judge_mcp.py`, started by Claude Code with the plugin) with the tools `judge`, `factcheck`, `lunwen_judge`, `rigor`, `compare` and `judge_status`. Each call is a fresh request carrying only the rubric and the text, and the result is already checked by `review_zh.py`. The `/shuozhongwen` workflow uses it first and falls back to subagents when it is not configured.
 
 Endpoint, model and key live in one config file (`~/.shuozhongwen/judge.json`, or wherever `SHUOZHONGWEN_JUDGE_CONFIG` points), so switching APIs means editing one place:
 
@@ -100,17 +101,17 @@ Keys can come from an environment variable (`--key-env`), a .env file (`--key-fi
 Both hooks only check; they never modify a file or a reply.
 
 - **After a file write** (PostToolUse): checks the file Claude just wrote for invisible characters, garbled text and provenance metadata, and records the result (no pop-up).
-- **Before a reply is shown** (MessageDisplay): every reply, however short, ends with a check line: invisible characters or garbled text in the reply and in files written meanwhile. Replies of 250+ characters also get an AI-likeness line above it (the statistics are unreliable on shorter text). Display only; the transcript is untouched.
+- **Before a reply is shown** (MessageDisplay): every reply, however short, ends with a check line: invisible characters or garbled text in the reply and in files written meanwhile. Replies of 250+ characters also get an AI-likeness line above it (the statistics are unreliable on shorter text); for a delivery only the article before `【修改报告】` is scored, because the report's lists alone push any article into the high tier. Display only; the transcript is untouched.
 
 Environment: `SHUOZHONGWEN_SCORE=0` turns the score line off, `SHUOZHONGWEN_SCORE_MIN` sets the minimum length, `SHUOZHONGWEN_CHECK=0` turns the check line off, `SHUOZHONGWEN_LOG_DIR` sets the log folder (counts and scores only, never reply text).
 
 ## About the AI-likeness score
 
-A sign-constrained logistic regression over 19 Chinese stylometric features (sentence and paragraph length variation, connective density, ellipses and exclamations, pronoun and particle density, bigram repetition, stock-phrase markers, ...). Calibrated on 339 human texts (classics, pre-2020 Zhihu and Tieba long posts, free chapters of web novels, all hand-reviewed) and 101 texts from 8 models.
+A sign-constrained logistic regression over 19 Chinese stylometric features (sentence and paragraph length variation, connective density, ellipses and exclamations, pronoun and particle density, bigram repetition, stock-phrase markers, ...). Calibrated on 62 human texts (classics, Tieba long posts, free chapters of web novels, all hand-reviewed) and 101 texts from 8 models.
 
-- The `high` threshold is fixed at 0.6 (about the human 90th percentile). Per article, 90% of the AI calibration texts reach it and 5% of human texts are misflagged; 0% of the 49 held-out human texts. (Before 2026-10-05 it was the 95th percentile, 0.789: 72% caught, 1.8% misflagged.)
-- Leave-one-model-out: 47%–81% caught per unseen model.
-- Held-out human text: 0% misflagged for colloquial forum posts, 4% for web fiction.
+- The `high` threshold is fixed at 0.6 (about the human 90th percentile). Per article, 89% of the AI calibration texts reach it and 3% of human texts are misflagged; 1 of the 49 held-out human texts.
+- Leave-one-model-out (per chunk): 57%–94% caught per unseen model.
+- Held-out human text (per chunk): 6% misflagged for colloquial forum posts, 10% for web fiction.
 
 It only says whether the statistics resemble the AI texts in the calibration set. It is not a verdict of any commercial detector and not a detector-evasion tool; inside the workflow it is only a guardrail. The human calibration corpus is included in `calibration/human/` and `calibration/test/` **for personal study and research only, no commercial use**; copyright stays with the original authors and platforms and the MIT license does not cover it (see `calibration/corpus/README.md`).
 
