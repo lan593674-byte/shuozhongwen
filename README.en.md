@@ -4,7 +4,7 @@
 
 A Chinese-writing plugin for AI agents. It writes or revises a Chinese article with three goals at once: **keep the facts intact, lose the machine-translated "AI tone", and actually write well**.
 
-Stripping AI tells alone tends to leave flat, lifeless prose. A weak first draft is rarely a sentence-level problem either: the writer had no concrete material and no clear point, so templates and stock phrases filled the space. This plugin therefore gathers material and outlines before drafting; only after the draft is written does it scan for templates and hand the text to a **fresh judge** that must back every score with a verbatim quote from the text (a score it cannot quote is void); it revises from that evidence with a new judge each round, and stops as soon as the bar is met. The statistical "AI-likeness" score is a guardrail, never a target.
+Stripping AI tells alone tends to leave flat, lifeless prose. A weak first draft is rarely a sentence-level problem either: the writer had no concrete material and no clear point, so templates and stock phrases filled the space. This plugin therefore gathers material and outlines before drafting; only after the draft is written does it scan for templates and hand the text to a **fresh judge** that must back every score with a verbatim quote from the text (a score it cannot quote is void); it revises from that evidence with a new judge each round and stops once the bar is met; literary pieces then get one polishing round, kept only if a blind comparison prefers it in both orders. The statistical "AI-likeness" score is a guardrail, never a target.
 
 Works as a full Claude Code plugin (subagents and hooks included) and as an Agent Skill for Codex, Cursor, Gemini CLI and other agents. The judge can be any model behind an OpenAI-compatible API.
 
@@ -13,12 +13,13 @@ Works as a full Claude Code plugin (subagents and hooks included) and as an Agen
 Type `/shuozhongwen <topic or path to draft>`:
 
 1. **Genre and standard**: practical text (reports, notices, plans) must be accurate and concise; argument must hold up; literary writing (essays, travel writing, fiction, reviews) must be good writing. The genre follows what the task asks for and sets the pass bar.
-2. **Prepare before writing**: restate the task (reader, what to cover, length); gather material: when revising or writing from your material, a data ledger first (numbers, names, terms, citations, causal directions), used verbatim; with only a topic, research first; for pieces that rest on your own experience (travel writing, memoir) it asks you three to five concrete questions instead of inventing. Then one sentence on what the reader should come away with, and a one-line-per-paragraph outline.
-3. **Draft** from the outline: one thing per paragraph, facts and details first, judgement after them, straight into the subject. Attention goes to content; template checks come after the draft.
+2. **Prepare before writing**: restate the task (reader, what to cover, length); gather material: when revising or writing from your material, a data ledger first (numbers, names, terms, citations, causal directions), used verbatim; with only a topic, research first; for pieces that rest on your own experience (travel writing, memoir) it asks you three to five concrete questions instead of inventing. Then one sentence on what the reader should come away with, and a one-line-per-paragraph outline in which each line starts from the fact that opens the paragraph; for expository text, a check that the task's core question gets a direct answer and no link in the chain is missing. Parts the genre always carries (a title for forum posts and articles, salutation and sign-off for letters) are included.
+3. **Draft** from the outline: one thing per paragraph, facts and details first, judgement after them, straight into the subject; the ending lands on the task's core question instead of opening a new topic. Attention goes to content; template checks come after the draft.
 4. **Self-check**: `polish_check.py` (invisible characters, four mechanical scans, structural templates, AI-likeness), then reread against the outline and the data ledger.
 5. **Editorial review and fact check** by two fresh judges that see only the genre, the task, the text and the rubric. Six dimensions: concrete detail, insight (selection, for expository text), language and imagery, rhythm, structure and tension, voice; plus whether the text is off task.
-6. **Revise from evidence**: `review_zh.py` verifies each quote is verbatim and applies the bar. The weak paragraph is rewritten from the outline; missing material is asked for or researched, never faked with manufactured verdicts, aphorisms or rhetorical questions. A new judge re-reviews; at most three rounds.
-7. **Deliver** the text, then a line `【修改报告】` and the revision report.
+6. **Revise from evidence**: `review_zh.py` verifies each quote is verbatim and applies the bar. The weak paragraph is rewritten from the outline; missing material is asked for or researched, never faked with manufactured verdicts, aphorisms or rhetorical questions. A new judge re-reviews; at most three rounds. When only the length falls short because the material cannot fill it, the text is not padded and the length is a reminder, not a failure.
+7. **Polish** (literary only): one more round on a copy after passing, adding unused details from the material and cutting sentences that explain characters' thoughts; a fresh compare judge sees both drafts in both orders, and the new one is delivered only if it wins both and passes review again.
+8. **Deliver** the text, then a line `【修改报告】` and the revision report.
 
 Pass bar: literary genres average ≥ 4 with every dimension ≥ 3; practical and argument texts average ≥ 3.5 with every dimension ≥ 3; not flat; not off task; at most one AI template the judge can quote (strings of short verdict openers, announcing sentences, wrap-up formulas, scare quotes, invented first-person experience, preambles about sources). Rhetorical questions, one-line paragraphs and callbacks are common in human prose and are only flagged, never blocking (see `calibration/TEMPLATE_AUDIT.md`). Zero doubtful facts for a piece written from a bare topic.
 
@@ -50,7 +51,7 @@ claude plugin marketplace add lan593674-byte/shuozhongwen
 claude plugin install shuozhongwen@shuozhongwen
 ```
 
-Then type `/shuozhongwen`. The judge and fact checker are the `shuozhongwen:judge` and `shuozhongwen:factcheck` subagents, running on the same model as your session.
+Then type `/shuozhongwen`. The judge, fact checker and compare judge are the `shuozhongwen:judge`, `shuozhongwen:factcheck` and `shuozhongwen:compare` subagents, running on the same model as your session.
 
 ### Codex, Cursor, Gemini CLI and other agents
 
@@ -68,7 +69,7 @@ Agents without subagents can use `judge_api.py` below, or ask you to paste the r
 
 ### Another model as the judge (recommended)
 
-A model grading its own draft is too lenient: it does not see its own habits and tends to reward them. The plugin ships an MCP server (`scripts/judge_mcp.py`, started by Claude Code with the plugin) with the tools `judge`, `factcheck`, `lunwen_judge`, `rigor` and `judge_status`. Each call is a fresh request carrying only the rubric and the text, and the result is already checked by `review_zh.py`. The `/shuozhongwen` workflow uses it first and falls back to subagents when it is not configured.
+A model grading its own draft is too lenient: it does not see its own habits and tends to reward them. The plugin ships an MCP server (`scripts/judge_mcp.py`, started by Claude Code with the plugin) with the tools `judge`, `factcheck`, `lunwen_judge`, `rigor`, `compare` and `judge_status`. Each call is a fresh request carrying only the rubric and the text, and the result is already checked by `review_zh.py`. The `/shuozhongwen` workflow uses it first and falls back to subagents when it is not configured.
 
 Endpoint, model and key live in one config file (`~/.shuozhongwen/judge.json`, or wherever `SHUOZHONGWEN_JUDGE_CONFIG` points), so switching APIs means editing one place:
 
