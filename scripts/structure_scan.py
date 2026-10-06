@@ -218,20 +218,25 @@ def scan(text: str, paper: bool = False) -> dict:
             passed &= ok
         rules.append({"rule": key, "label": label, "count": len(found), "value": value, "limit": limit,
                       "passed": ok, "gate": gate, "hits": found[:12]})
-    # 能不用引号就不用：every quotation outside dialogue and attributed speech is listed
-    # for the writer to reconsider. Informational only: it neither blocks nor counts
-    # toward stacking (revisions must keep the author's own quotes).
-    quotes = []
+    # 能不用引号就不用. In human prose most quotation marks hold a whole sentence
+    # someone said (classics 51%, Zhihu 75%, web novels 81%); in model output most sit
+    # on a single word or label (47%; Claude 56%): “上瘾模型” “参考地图” “一点点”.
+    # Counted per piece the two overlap (people quote names and terms too), so this
+    # never blocks: the word and phrase quotes are listed for the remove-the-quotes
+    # test, and revisions keep the author's own quotes.
+    quotes, sentence_quotes = [], 0
     for p in prose:
-        for m in re.finditer(r"“([^”\n]{1,40})”", p):
-            before = p[max(0, m.start() - 6):m.start()]
-            if not SPEECH_BEFORE.search(before) and not re.search(r"[。！？!?]$", m.group(1)):
+        for m in re.finditer(r"“([^”\n]{1,80})”", p):
+            inner, before = m.group(1), p[max(0, m.start() - 6):m.start()]
+            if re.search(r"[。！？!?…，,；;：:]", inner) or _han(inner) > 12:
+                sentence_quotes += 1
+            elif not SPEECH_BEFORE.search(before):
                 quotes.append(m.group(0))
     over = [r["label"] for r in rules if not r["passed"]]
     stacked = len(over) > STACK_LIMIT
     return {"passed": passed and not stacked, "paragraphs": len(prose), "long_paragraphs": len(long_paras),
             "rules": rules, "stacked": {"count": len(over), "limit": STACK_LIMIT, "passed": not stacked, "rules": over},
-            "quotes": quotes}
+            "quotes": quotes, "sentence_quotes": sentence_quotes}
 
 
 def report(r: dict) -> str:
@@ -247,7 +252,9 @@ def report(r: dict) -> str:
             for h in rule["hits"]:
                 out.append(f"    {h[:60]}")
     if r.get("quotes"):
-        out.append(f"引号（能不用就不用）：{len(r['quotes'])} 处，逐处看能不能去掉：" + "、".join(r["quotes"][:12]))
+        out.append(f"引号套在词和短语上 {len(r['quotes'])} 处（引整句的 {r.get('sentence_quotes', 0)} 处不算）："
+                   "人类文字里引号多半引整句，AI 多半套在词上。逐处去掉引号再读，意思不变就别加："
+                   + "、".join(r["quotes"][:12]))
     st = r.get("stacked")
     if st:
         state = "" if st["passed"] else "  ← 未通过：套路叠在一起，读者一眼就能看出来"

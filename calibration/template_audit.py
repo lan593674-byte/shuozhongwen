@@ -54,7 +54,7 @@ def pieces(text: str) -> list[str]:
 
 
 def audit(files: list[Path]) -> dict:
-    n, gate, two = 0, 0, 0
+    n, gate, two, q_sentence, q_word = 0, 0, 0, 0, 0
     per_rule: dict[str, int] = {k: 0 for k, _, _ in structure_scan.RULES}
     rates: dict[str, list[float]] = {k: [] for k, _ in RATES}
     for f in files:
@@ -63,6 +63,9 @@ def audit(files: list[Path]) -> dict:
         for k, _ in RATES:
             if feats.get(k) is not None:
                 rates[k].append(feats[k])
+        whole = structure_scan.scan(text)
+        q_sentence += whole["sentence_quotes"]
+        q_word += len(whole["quotes"])
         for c in pieces(text):
             r = structure_scan.scan(c)
             n += 1
@@ -74,7 +77,7 @@ def audit(files: list[Path]) -> dict:
                     if rule["rule"] != "source_mention":
                         instances += rule["count"]
             two += instances >= 2
-    return {"n": n, "gate": gate, "two": two, "per_rule": per_rule,
+    return {"n": n, "gate": gate, "two": two, "per_rule": per_rule, "q_sentence": q_sentence, "q_word": q_word,
             "rates": {k: statistics.mean(v) if v else 0.0 for k, v in rates.items()}}
 
 
@@ -105,6 +108,12 @@ def main() -> int:
               "| | " + " | ".join(label for label, _ in results) + " |", "|---|" + "---|" * len(results)]
     for key, label in RATES:
         lines.append(f"| {label} | " + " | ".join(f"{r['rates'][key]:.2f}" for _, r in results) + " |")
+    lines += ["", "引号引的是什么（整篇算，说话动词后面的短引语不算）：", "",
+              "| | " + " | ".join(label for label, _ in results) + " |", "|---|" + "---|" * len(results),
+              "| 引整句的原话 | " + " | ".join(pct(r["q_sentence"], r["q_sentence"] + r["q_word"]) for _, r in results) + " |",
+              "| 套在词和短语上 | " + " | ".join(pct(r["q_word"], r["q_sentence"] + r["q_word"]) for _, r in results) + " |",
+              "", "引号的总数人和 AI 差不多，用法不一样：人多半引整句，AI 多半套在词上。按片段机械计数分不开"
+              "（人也给人名、绰号、术语加引号），所以扫描只列出来让作者做去引号测试，由评委按语义判滥用引号。"]
     lines += ["", "怎么读：一条规则在人类文字里命中得和 AI 一样多、甚至更多，它就不是 AI 信号，只是一种常见写法；"
               "这样的规则只能当提示，不能拦交付，评委也不该把它算进模板腔。"
               "标点那张表同理：人类文字的破折号、问号、连接词都比 AI 多，规则里不能把它们当 AI 腔一律删。", "",

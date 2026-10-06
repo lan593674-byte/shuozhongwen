@@ -131,7 +131,7 @@ def main() -> int:
     if rigor_raw is not None:
         (out / f"{src.stem}.rigor.json").write_text(rigor_raw, encoding="utf-8")
 
-    r = review_zh.check_review(text, review_zh.load_json(review_raw), a.genre, paper=a.paper)
+    r = review_zh.check_review(text, review_zh.load_json(review_raw), a.genre, paper=a.paper, model=model)
     f = review_zh.check_facts(text, review_zh.load_json(facts_raw), own=a.own) if facts_raw is not None else None
     g = review_zh.check_rigor(original, text, review_zh.load_json(rigor_raw)) if rigor_raw is not None else None
     if a.json:

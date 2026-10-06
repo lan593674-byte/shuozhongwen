@@ -117,3 +117,19 @@ def test_rigor_regression_needs_both_quotes_and_fails():
 
 def test_load_json_tolerates_wrapping():
     assert review_zh.load_json('好的：```json\n{"claims": []}\n```')["claims"] == []
+
+
+def test_calibrated_judge_model_uses_its_own_line(tmp_path, monkeypatch):
+    t = tmp_path / "th.json"
+    t.write_text('{"models": {"strict-model": {"literary": {"average": 3.5, "each": 3}, '
+                 '"practical": {"average": 3.0, "each": 3}}}}', encoding="utf-8")
+    monkeypatch.setenv("SHUOZHONGWEN_THRESHOLDS", str(t))
+    s = review(4)
+    s["scores"]["voice"]["score"] = 3
+    s["scores"]["rhythm"]["score"] = 3
+    s["scores"]["insight"]["score"] = 3   # average 3.5
+    assert not review_zh.check_review(TEXT, s, "游记散文")["passed"]                 # fixed line 4.0
+    r = review_zh.check_review(TEXT, s, "游记散文", model="Strict-Model")             # calibrated 3.5
+    assert r["passed"] and r["gate"]["source"] == "Strict-Model 的校准分数线"
+    assert review_zh.check_review(TEXT, s, "周报", model="other-model")["gate"]["average"] == 3.5
+    assert "校准分数线" in review_zh.report(r, None)
