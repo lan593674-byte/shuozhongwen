@@ -8,10 +8,11 @@ model review the same reference texts several times with the current rubric
 writing:
 
 - literary line: from public-domain classics (calibration/human, 散文和小说片段)
-- practical / argument line: from high-upvote Zhihu answers written before 2020
-- line = the 25th percentile of that group's per-text mean score, rounded down
-  to 0.25 and kept within [3.0, 4.0]: three in four published human texts of
-  that kind pass on a single review by that model.
+- line = the 25th percentile of the classics' per-text mean score, rounded down
+  to 0.25 and kept within [3.0, 4.0]: three in four of them pass on a single
+  review by that model.
+- practical / argument line: fixed at 3.5, since the corpus has no human set
+  of good practical or argumentative writing to calibrate it on.
 AI samples (calibration/ai) are reviewed too, to show how many of them would
 pass under the new line.
 
@@ -52,7 +53,8 @@ NOVELS = ("孔乙己", "故鄉", "祝福", "一件小事", "社戲", "呼蘭河�
 AI_GENRE = {"essay": "散文", "fiction": "小说", "speech": "演讲稿", "comment": "评论", "polemic": "议论文",
             "answer": "知乎回答", "qa": "知乎回答", "review": "书评影评", "wechat": "公众号文章",
             "work": "工作周报或方案", "news": "新闻稿", "student": "学生作文", "copy": "广告文案", "social": "社交媒体帖子"}
-GROUPS = ("经典名作", "知乎高赞", "AI 样本")
+GROUPS = ("经典名作", "AI 样本")
+PRACTICAL_LINE = 3.5  # no human reference set for practical writing (see docstring)
 _lock = threading.Lock()
 
 
@@ -74,22 +76,17 @@ def excerpt(text: str, lo: int = 700, hi: int = 1400) -> str | None:
 
 def samples(seed: int = 7) -> list[dict]:
     rng = random.Random(seed)
+    rng_ai = random.Random(f"{seed}-ai")  # own stream: changes to the human side never reshuffle the AI picks
     out = []
-    classics = sorted(f for f in (HERE / "human").glob("*.txt") if not f.name.startswith(("zhihu", "qidian", "tieba")))
+    classics = sorted(f for f in (HERE / "human").glob("*.txt") if not f.name.startswith(("qidian", "tieba")))
     rng.shuffle(classics)
     for f in classics:
         t = excerpt(f.read_text(encoding="utf-8"))
         if t and sum(s["group"] == "经典名作" for s in out) < 10:
             genre = "小说片段" if any(n in f.stem for n in NOVELS) else "散文"
             out.append({"id": f.stem, "group": "经典名作", "genre": genre, "text": t})
-    zhihu = sorted((HERE / "human").glob("zhihu_*.txt"))
-    rng.shuffle(zhihu)
-    for f in zhihu:
-        t = excerpt(f.read_text(encoding="utf-8"))
-        if t and sum(s["group"] == "知乎高赞" for s in out) < 12:
-            out.append({"id": f.stem, "group": "知乎高赞", "genre": "知乎回答", "text": t})
     ai = sorted((HERE / "ai").glob("*__*.txt"))
-    rng.shuffle(ai)
+    rng_ai.shuffle(ai)
     seen_models: dict[str, int] = {}
     for f in ai:
         model, prompt = f.stem.split("__", 1)
@@ -153,14 +150,14 @@ def main() -> int:
         list(ex.map(lambda j: run_one(*j, r["base"], r["key"], r["timeout"], cache), jobs))
 
     thresholds = {"calibrated": str(date.today()), "rubric": "agents/judge.md", "repeats": a.repeats,
-                  "rule": "每个模型的分数线 = 该模型给同类人类文字（文学：经典名作；实用和议论：知乎高赞）每篇平均分的第 25 百分位，"
-                          "向下取到 0.25，限制在 3.0 到 4.0 之间；每项最低分仍是 3",
+                  "rule": "文学分数线 = 该模型给经典名作每篇平均分的第 25 百分位，向下取到 0.25，限制在 3.0 到 4.0 之间；"
+                          f"实用和议论文字没有人类参照文本，固定 {PRACTICAL_LINE}；每项最低分仍是 3",
                   "default": {"literary": {"average": 4.0, "each": 3}, "practical": {"average": 3.5, "each": 3}},
                   "models": {}}
     md = ["# 评委分数线校准", "",
           f"日期：{date.today()}。脚本：`python calibration/calibrate_judge.py --models {','.join(models)} --repeats {a.repeats}`。"
           f"评分标准是当前的 `agents/judge.md`。经典名作 {sum(s['group'] == '经典名作' for s in items)} 段、"
-          f"知乎高赞 {sum(s['group'] == '知乎高赞' for s in items)} 段、AI 样本 {sum(s['group'] == 'AI 样本' for s in items)} 篇，"
+          f"AI 样本 {sum(s['group'] == 'AI 样本' for s in items)} 篇，"
           f"每个模型每篇各评 {a.repeats} 次。", "",
           "## 各组平均分（六项平均，每篇先取几次的均值）", "",
           "| 模型 | " + " | ".join(GROUPS) + " | 同一篇几次评分的标准差 | 失败调用 |", "|---|" + "---|" * (len(GROUPS) + 2)]
@@ -184,9 +181,8 @@ def main() -> int:
         md.append(f"| {m} | " + " | ".join(f"{statistics.mean(v):.2f}（{min(v):.2f}–{max(v):.2f}）" if v else "-"
                                           for v in by_group.values()) + f" | {sd:.2f} | {fails} |")
         lit = line_from(by_group["经典名作"]) if by_group["经典名作"] else 4.0
-        prac = line_from(by_group["知乎高赞"]) if by_group["知乎高赞"] else 3.5
-        thresholds["models"][m] = {"literary": {"average": lit, "each": 3}, "practical": {"average": prac, "each": 3},
-                                   "noise_sd": round(sd, 2)}
+        prac = PRACTICAL_LINE
+        thresholds["models"][m] = {"literary": {"average": lit, "each": 3}, "noise_sd": round(sd, 2)}
 
         def single_pass(group: str) -> str:
             ok = n = 0
@@ -221,7 +217,7 @@ def main() -> int:
         detail.append(f"| {m} | {lit} | {prac} | " + " | ".join(f"{old_pass(g)} → {single_pass(g)}" for g in GROUPS) + " |")
     md += ["", "## 分数线和单次审读的通过率", "",
            "分数线按每个模型自己的打分习惯定：" + thresholds["rule"] + "。通过率按单次审读算（分数、每项 ≥ 3、不是白开水、模板腔 ≤ 1 处都要满足），"
-           "箭头左边是旧的固定分数线（文学 4.0、其他 3.5），右边是校准后的分数线。", "",
+           "箭头左边是固定分数线（文学 4.0、其他 3.5），右边是校准后的分数线。", "",
            "| 模型 | 文学分数线 | 实用和议论分数线 | " + " | ".join(f"{g}通过率" for g in GROUPS) + " |",
            "|---|---|---|" + "---|" * len(GROUPS)] + detail
     md += ["", "没校准过的评委（比如 Claude Code 里的子代理）仍用固定分数线：文学 4.0、实用和议论 3.5。"
