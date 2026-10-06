@@ -142,5 +142,173 @@
   "templates": [],
   "devices": [],
   "summary": "这是一篇有观察、有具体数字与场景的知乎回答，语言自然有画面，中段举例略平但整体清楚可读。"
+ },
+ "score|deepseek-v4-pro|old|T3|draft1|0": {
+  "average": 4.83,
+  "valid": true,
+  "passed": true,
+  "dims": {
+   "concrete": 5,
+   "insight": 4,
+   "language": 5,
+   "rhythm": 5,
+   "structure": 5,
+   "voice": 5
+  },
+  "flat": false,
+  "off_task": false,
+  "templates": [],
+  "devices": [],
+  "summary": "用具体场景和克制判断串起原因，结尾以对话收束，不喊口号，是知乎少见的干净回答。"
+ },
+ "score|deepseek-v4-pro|old|T2|draft1|2": {
+  "average": 5.0,
+  "valid": true,
+  "passed": true,
+  "dims": {
+   "concrete": 5,
+   "insight": 5,
+   "language": 5,
+   "rhythm": 5,
+   "structure": 5,
+   "voice": 5
+  },
+  "flat": false,
+  "off_task": false,
+  "templates": [],
+  "devices": [],
+  "summary": "这篇小说用具体细节和克制对话写规则与人情的细小越界，结尾留白完成度高。"
+ },
+ "score|deepseek-v4-pro|old|T3|draft1|2": {
+  "average": 4.17,
+  "valid": true,
+  "passed": true,
+  "dims": {
+   "concrete": 5,
+   "insight": 4,
+   "language": 4,
+   "rhythm": 4,
+   "structure": 4,
+   "voice": 4
+  },
+  "flat": false,
+  "off_task": false,
+  "templates": [],
+  "devices": [],
+  "summary": "细节具体、结尾有余味，是一篇有观察底色的知乎回答，但中段说明略密，核心判断可再锋利。"
+ },
+ "score|deepseek-v4-pro|old|T2|final|2": {
+  "average": 5.0,
+  "valid": true,
+  "passed": true,
+  "dims": {
+   "concrete": 5,
+   "insight": 5,
+   "language": 5,
+   "rhythm": 5,
+   "structure": 5,
+   "voice": 5
+  },
+  "flat": false,
+  "off_task": false,
+  "templates": [],
+  "devices": [],
+  "summary": "用末班车的“逢站必停”写人情，细节和结尾都见功力。"
+ },
+ "score|deepseek-v4-pro|old|T2|draft1|1": {
+  "average": 4.83,
+  "valid": true,
+  "passed": true,
+  "dims": {
+   "concrete": 5,
+   "insight": 4,
+   "language": 5,
+   "rhythm": 5,
+   "structure": 5,
+   "voice": 5
+  },
+  "flat": false,
+  "off_task": false,
+  "templates": [],
+  "devices": [],
+  "summary": "细节扎实、收束克制，末班车的规则与破例写得有分寸，几乎不见套话。"
+ },
+ "score|deepseek-v4-pro|old|T2|final|1": {
+  "average": 5.0,
+  "valid": true,
+  "passed": true,
+  "dims": {
+   "concrete": 5,
+   "insight": 5,
+   "language": 5,
+   "rhythm": 5,
+   "structure": 5,
+   "voice": 5
+  },
+  "flat": false,
+  "off_task": false,
+  "templates": [],
+  "devices": [],
+  "summary": "一篇用具体细节和沉默写规则与人情缝隙的短篇，结尾的泥印留有余味。"
+ },
+ "score|deepseek-v4-pro|old|T1|final|0": {
+  "average": 4.0,
+  "valid": true,
+  "passed": true,
+  "dims": {
+   "concrete": 4,
+   "insight": 4,
+   "language": 4,
+   "rhythm": 4,
+   "structure": 4,
+   "voice": 4
+  },
+  "flat": false,
+  "off_task": false,
+  "templates": [
+   "报幕句"
+  ],
+  "devices": [],
+  "summary": "任务完成得清楚，三处工程的水沙配合关系讲得明白，岁修原因也交代到位；语言简明，个别比喻和总起句偏套路。"
+ },
+ "score|deepseek-v4-pro|old|T1|final|2": {
+  "average": 4.0,
+  "valid": true,
+  "passed": true,
+  "dims": {
+   "concrete": 4,
+   "insight": 4,
+   "language": 4,
+   "rhythm": 4,
+   "structure": 4,
+   "voice": 4
+  },
+  "flat": false,
+  "off_task": false,
+  "templates": [],
+  "devices": [],
+  "summary": "一篇简洁清楚的说明文，三大工程配合关系和长久使用原因都讲得明白，但语言和结构略平。"
+ },
+ "score|deepseek-v4-pro|old|T1|final|1": {
+  "average": 3.67,
+  "valid": true,
+  "passed": false,
+  "dims": {
+   "concrete": 4,
+   "insight": 4,
+   "language": 4,
+   "rhythm": 4,
+   "structure": 3,
+   "voice": 3
+  },
+  "flat": false,
+  "off_task": false,
+  "templates": [
+   "报幕句",
+   "段首短判断",
+   "段首短判断"
+  ],
+  "devices": [],
+  "summary": "信息准、路线清楚，但结构偏报幕式，像规整的资料整理而非有讲解感的论坛帖。"
  }
 }
