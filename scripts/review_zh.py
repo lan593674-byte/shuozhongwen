@@ -15,7 +15,10 @@ does not call any model. It takes the JSON they returned and:
    devices (devices: 设问自答, 单句成段, 前后回扣, 冒号清单, 段尾警句) are common
    in human prose too, so they are listed for the writer and never fail a review.
 3. Gate: literary genres need average >= 4.0 and every dimension >= 3;
-   practical and argument texts need average >= 3.5 and every dimension >= 3;
+   practical and argument texts need average >= 3.5 and every dimension >= 3.
+   A judge model calibrated by calibration/calibrate_judge.py has its own lines
+   in judge_thresholds.json (set from how that model scores human writing);
+   pass --judge-model to use them;
    a "flat" verdict always fails, and so does "off_task" (the judge was given
    the task and the text does not do what it asks).
 4. Facts: claims marked "doubt" block delivery only for the writer's own draft
@@ -26,7 +29,7 @@ does not call any model. It takes the JSON they returned and:
    --rigor, any verbatim-quoted regression in academic rigor fails.
 
 Usage:
-  review_zh.py 稿件 --genre 城市随笔散文 --review 审读.json [--facts 核查.json] [--own]
+  review_zh.py 稿件 --genre 城市随笔散文 --review 审读.json [--facts 核查.json] [--own] [--judge-model 模型名]
   review_zh.py 改稿 --genre 课程设计报告 --paper --review 审读.json --original 原稿 --rigor 严谨.json
 Exit code 0 = passed.
 """
@@ -35,6 +38,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -66,8 +70,28 @@ MAX_TEMPLATES = 1  # structural AI templates the judge quoted (agents/judge.md �
 _STRIP = re.compile(r"[\s“”‘’\"'「」『』《》…\.。，,、；;：:！!？?—\-]+")
 
 
-def gate(genre: str) -> tuple[float, int]:
-    return (4.0, 3) if any(g in genre for g in LITERARY) else (3.5, 3)
+THRESHOLDS = Path(__file__).resolve().parent / "judge_thresholds.json"
+
+
+def thresholds() -> dict:
+    path = Path(os.environ.get("SHUOZHONGWEN_THRESHOLDS") or THRESHOLDS)
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else {}
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def gate(genre: str, model: str | None = None) -> tuple[float, int, str]:
+    """(average line, each-dimension minimum, where the line comes from). A judge
+    model calibrated on human writing (calibration/calibrate_judge.py) has its own
+    lines; any other judge, Claude subagents included, gets the fixed ones."""
+    kind = "literary" if any(g in genre for g in LITERARY) else "practical"
+    models = {k.lower(): v for k, v in (thresholds().get("models") or {}).items()}
+    line = (models.get((model or "").lower()) or {}).get(kind)
+    if isinstance(line, dict) and "average" in line:
+        return float(line["average"]), int(line.get("each", 3)), f"{model} 的校准分数线"
+    return (4.0, 3, "固定分数线") if kind == "literary" else (3.5, 3, "固定分数线")
 
 
 def _norm(s: str) -> str:
@@ -87,8 +111,8 @@ def quoted(text: str, evidence: str) -> bool:
     return len(ev) >= MIN_EVIDENCE and ev in _norm(text)
 
 
-def check_review(text: str, review: dict, genre: str, paper: bool = False) -> dict:
-    avg_min, dim_min = (3.5, 3) if paper else gate(genre)
+def check_review(text: str, review: dict, genre: str, paper: bool = False, model: str | None = None) -> dict:
+    avg_min, dim_min, source = (3.5, 3, "固定分数线") if paper else gate(genre, model)
     scores = review.get("scores", {})
     dims, void = {}, []
     for key, label in (PAPER_DIMENSIONS if paper else DIMENSIONS):
@@ -109,7 +133,7 @@ def check_review(text: str, review: dict, genre: str, paper: bool = False) -> di
               and not flat and not off_task and len(templates) <= MAX_TEMPLATES)
     weakest = sorted(dims, key=lambda k: dims[k])[:2] if dims else []
     return {"valid": valid, "void": void, "dims": dims, "average": average, "flat": flat, "paper": paper,
-            "gate": {"average": avg_min, "each": dim_min}, "passed": passed, "weakest": weakest,
+            "gate": {"average": avg_min, "each": dim_min, "source": source}, "passed": passed, "weakest": weakest,
             "fixes": {k: scores[k].get("fix", "") for k in dims if k in scores},
             "cliche": [c for c in review.get("cliche", []) if quoted(text, c)],
             "templates": templates, "devices": devices,
@@ -144,7 +168,8 @@ def report(r: dict, f: dict | None, g: dict | None = None) -> str:
     if not r["valid"]:
         out.append(f"审读无效：{('、'.join(r['void']))} 的证据在原文里找不到，这几项分数作废。换一个全新的评委子代理重审。")
     dims = "、".join(f"{zh[k]} {v}" for k, v in r["dims"].items())
-    out.append(f"{'语言审读' if r.get('paper') else '编辑审读'}：平均 {r['average']}（要求 ≥{r['gate']['average']}），{dims}（要求都 ≥{r['gate']['each']}），"
+    source = r["gate"].get("source", "固定分数线")
+    out.append(f"{'语言审读' if r.get('paper') else '编辑审读'}：平均 {r['average']}（要求 ≥{r['gate']['average']}，{source}），{dims}（要求都 ≥{r['gate']['each']}），"
                f"白开水：{'是' if r['flat'] else '否'}")
     if r.get("off_task"):
         out.append(f"  偏题（未通过）：{r.get('task_note') or '正文没做任务要求的事'}")
@@ -187,12 +212,14 @@ def main() -> int:
     p.add_argument("--paper", action="store_true", help="论文模式：按 lunwen-judge 的六项和 3.5 分线判")
     p.add_argument("--original", help="论文模式：原稿文件，配合 --rigor")
     p.add_argument("--rigor", help="论文模式：严谨性审查子代理返回的 JSON（文件路径）")
+    p.add_argument("--judge-model", help="给出这份审读的评委模型名：校准过的模型用它自己的分数线（scripts/judge_thresholds.json）")
     p.add_argument("--json", action="store_true")
     a = p.parse_args()
     if a.rigor and not a.original:
         p.error("--rigor needs --original")
     text = read_any(a.path)
-    r = check_review(text, load_json(Path(a.review).read_text(encoding="utf-8")), a.genre, paper=a.paper)
+    r = check_review(text, load_json(Path(a.review).read_text(encoding="utf-8")), a.genre, paper=a.paper,
+                     model=a.judge_model)
     f = check_facts(text, load_json(Path(a.facts).read_text(encoding="utf-8")), own=a.own) if a.facts else None
     g = (check_rigor(read_any(a.original), text, load_json(Path(a.rigor).read_text(encoding="utf-8")))
          if a.rigor else None)

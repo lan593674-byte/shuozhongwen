@@ -102,6 +102,15 @@ def test_quotes_are_listed_but_never_block():
     assert "“老伙计”" not in r["quotes"]  # named with 叫作: a word used as a word
 
 
+def test_sentence_quotes_are_counted_word_quotes_listed():
+    # people mostly quote whole sentences; models put quotes on words and labels
+    text = PLAIN + "\n\n老人看了一眼天，说：“明天再来吧，今天太晚了。”我们把兴趣落地成“具体规划”，这“一点点”改变就够了。\n"
+    r = ss.scan(text)
+    assert r["passed"] and r["sentence_quotes"] == 1
+    assert r["quotes"] == ["“具体规划”", "“一点点”"]
+    assert "引整句的 1 处不算" in ss.report(r)
+
+
 def test_heard_in_class_is_a_hint_not_a_ban():
     text = "贸易壁垒在削弱打猎，课上也讲过这一点，老猎人会决定哪只猎物先不打，留着它繁殖，这些规矩同样来自外面。"
     r = ss.scan(text)

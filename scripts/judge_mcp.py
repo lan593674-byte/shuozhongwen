@@ -81,7 +81,7 @@ def run_tool(name: str, args: dict) -> str:
     model, raw = judge_api.call_role(role, text, genre, original, task=str(args.get("task", "") or ""))
     data = review_zh.load_json(raw)
     if role in ("judge", "lunwen-judge"):
-        r = review_zh.check_review(text, data, genre, paper=role == "lunwen-judge")
+        r = review_zh.check_review(text, data, genre, paper=role == "lunwen-judge", model=model)
         report = review_zh.report(r, None)
     elif role == "factcheck":
         f = review_zh.check_facts(text, data, own=bool(args.get("own")))
