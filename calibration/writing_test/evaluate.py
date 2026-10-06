@@ -138,10 +138,16 @@ def main() -> int:
               f"打分用新版评分标准（`agents/judge.md`，给了文体和任务），{len(models)} 个评委模型各评 {a.repeats} 次；"
               "盲评对比把两版放在一起问哪篇更好，A、B 两种顺序各问一次。", ""]
 
+    def passed(v, model, topic):
+        # recomputed with the current pass lines, so a recalibration needs no new calls
+        line, each, _ = review_zh.gate(TOPICS[topic]["genre"], model)
+        return (v["average"] >= line and all(x >= each for x in v["dims"].values()) and not v["flat"]
+                and not v["off_task"] and len(v["templates"]) <= review_zh.MAX_TEMPLATES)
+
     def avg(model, ver, topic, stage):
         vals = [cache.get(f"score|{model}|{ver}|{topic}|{stage}|{k}", {}) for k in range(a.repeats)]
         got = [v["average"] for v in vals if v.get("average") is not None and v.get("valid")]
-        passes = [v["passed"] for v in vals if v.get("average") is not None and v.get("valid")]
+        passes = [passed(v, model, topic) for v in vals if v.get("average") is not None and v.get("valid")]
         return (statistics.mean(got) if got else None), (sum(passes) / len(passes) if passes else None)
 
     for stage, title in (("draft1", "初稿"), ("final", "终稿")):
