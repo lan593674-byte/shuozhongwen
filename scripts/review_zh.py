@@ -238,7 +238,7 @@ def report(r: dict, f: dict | None, g: dict | None = None) -> str:
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("path", help="稿件文件（论文模式下是改稿）")
-    p.add_argument("--genre", required=True, help="文体，如 城市随笔散文、周报、知乎回答、课程设计报告")
+    p.add_argument("--genre", required=True, help="文体，如 城市随笔散文、周报、网络问答、课程设计报告")
     p.add_argument("--review", required=True, help="评委子代理返回的 JSON（文件路径）")
     p.add_argument("--facts", help="事实核查子代理返回的 JSON（文件路径）")
     p.add_argument("--own", action="store_true", help="只给题目、没有材料的稿子：事实存疑要改到 0 才算过；不加则存疑项只列给作者")

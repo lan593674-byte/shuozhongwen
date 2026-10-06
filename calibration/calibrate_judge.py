@@ -13,8 +13,8 @@ writing:
   review by that model.
 - practical / argument line: fixed at 3.5, since the corpus has no human set
   of good practical or argumentative writing to calibrate it on.
-AI samples (calibration/ai) are reviewed too, to show how many of them would
-pass under the new line.
+A fixed set of 12 AI samples (calibration/ai, AI_SAMPLES) is reviewed too, to
+show how many of them would pass; keeping the set fixed keeps reruns comparable.
 
 Writes scripts/judge_thresholds.json (read by review_zh.py) and
 calibration/JUDGE_CALIBRATION.md. Raw replies are cached in
@@ -51,9 +51,15 @@ OUT_JSON = ROOT / "scripts" / "judge_thresholds.json"
 OUT_MD = HERE / "JUDGE_CALIBRATION.md"
 NOVELS = ("孔乙己", "故鄉", "祝福", "一件小事", "社戲", "呼蘭河傳")
 AI_GENRE = {"essay": "散文", "fiction": "小说", "speech": "演讲稿", "comment": "评论", "polemic": "议论文",
-            "answer": "知乎回答", "qa": "知乎回答", "review": "书评影评", "wechat": "公众号文章",
+            "answer": "网络问答", "qa": "网络问答", "review": "书评影评", "wechat": "公众号文章",
             "work": "工作周报或方案", "news": "新闻稿", "student": "学生作文", "copy": "广告文案", "social": "社交媒体帖子"}
 GROUPS = ("经典名作", "AI 样本")
+# 12 AI texts, 400–2200 characters, at most two per generating model
+AI_SAMPLES = ("claude-opus-5-5__answer_study", "claude-opus-5-5__essay_autumn",
+              "deepseek-v4.1-flash__p11_work_weekly", "deepseek-v4.1-flash__p13_wechat_money",
+              "doubao-seed-2.0-pro__p02_essay_grandma", "doubao-seed-2.0-pro__p06_speech_company",
+              "glm-5.3__p05_speech_grad", "glm-5.3__p11_work_weekly", "gpt-5.5__p19_student_essay",
+              "gpt-6-luna__p02_essay_grandma", "gpt-6-luna__p20_student_letter", "kimi-k3__p12_work_plan")
 PRACTICAL_LINE = 3.5  # no human reference set for practical writing (see docstring)
 _lock = threading.Lock()
 
@@ -76,7 +82,6 @@ def excerpt(text: str, lo: int = 700, hi: int = 1400) -> str | None:
 
 def samples(seed: int = 7) -> list[dict]:
     rng = random.Random(seed)
-    rng_ai = random.Random(f"{seed}-ai")  # own stream: changes to the human side never reshuffle the AI picks
     out = []
     classics = sorted(f for f in (HERE / "human").glob("*.txt") if not f.name.startswith(("qidian", "tieba")))
     rng.shuffle(classics)
@@ -85,18 +90,11 @@ def samples(seed: int = 7) -> list[dict]:
         if t and sum(s["group"] == "经典名作" for s in out) < 10:
             genre = "小说片段" if any(n in f.stem for n in NOVELS) else "散文"
             out.append({"id": f.stem, "group": "经典名作", "genre": genre, "text": t})
-    ai = sorted((HERE / "ai").glob("*__*.txt"))
-    rng_ai.shuffle(ai)
-    seen_models: dict[str, int] = {}
-    for f in ai:
-        model, prompt = f.stem.split("__", 1)
+    for stem in AI_SAMPLES:
+        prompt = stem.split("__", 1)[1]
         kind = prompt.split("_")[1] if prompt.startswith("p") else prompt.split("_")[0]
-        if kind not in AI_GENRE or seen_models.get(model, 0) >= 2:
-            continue
-        t = f.read_text(encoding="utf-8").strip()
-        if 400 <= len(t) <= 2200 and sum(s["group"] == "AI 样本" for s in out) < 12:
-            seen_models[model] = seen_models.get(model, 0) + 1
-            out.append({"id": f.stem, "group": "AI 样本", "genre": AI_GENRE[kind], "text": t})
+        t = (HERE / "ai" / f"{stem}.txt").read_text(encoding="utf-8").strip()
+        out.append({"id": stem, "group": "AI 样本", "genre": AI_GENRE[kind], "text": t})
     return out
 
 
