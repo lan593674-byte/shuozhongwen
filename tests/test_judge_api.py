@@ -175,3 +175,30 @@ def test_chat_retries_a_dropped_connection(monkeypatch):
     finally:
         srv.shutdown()
     assert calls["n"] == 2
+
+
+def test_chat_reads_a_streamed_reply_and_skips_reasoning():
+    events = [{"choices": [{"delta": {"reasoning_content": "先想一想"}}]},
+              {"choices": [{"delta": {"content": "{\"a\": "}}]},
+              {"choices": [{"delta": {"content": "1}"}}]}]
+
+    class H(BaseHTTPRequestHandler):
+        def do_POST(self):
+            body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+            assert body["stream"] is True and "max_tokens" not in body
+            self.send_response(200)
+            self.send_header("Content-Type", "text/event-stream")
+            self.end_headers()
+            for e in events:
+                self.wfile.write(("data: " + json.dumps(e, ensure_ascii=False) + "\n\n").encode())
+            self.wfile.write(b"data: [DONE]\n\n")
+
+        def log_message(self, *a):
+            pass
+
+    srv = HTTPServer(("127.0.0.1", 0), H)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    try:
+        assert judge_api.chat("s", "u", "m", f"http://127.0.0.1:{srv.server_port}/v1", None, timeout=10) == '{"a": 1}'
+    finally:
+        srv.shutdown()
