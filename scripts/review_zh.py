@@ -98,12 +98,45 @@ def _norm(s: str) -> str:
     return _STRIP.sub("", s or "")
 
 
+def _escape_inner_quotes(s: str) -> str:
+    """Escape ASCII double quotes inside JSON strings that the model forgot to
+    escape (a quoted word inside an evidence quote). A quote closes a string only
+    when the next non-space character is , : } or ]."""
+    out, in_str, i = [], False, 0
+    while i < len(s):
+        c = s[i]
+        if in_str and c == "\\":
+            out.append(s[i:i + 2])
+            i += 2
+            continue
+        if c == '"':
+            if not in_str:
+                in_str = True
+            else:
+                j = i + 1
+                while j < len(s) and s[j] in " \t\r\n":
+                    j += 1
+                if j >= len(s) or s[j] in ",:}]":
+                    in_str = False
+                else:
+                    out.append('\\"')
+                    i += 1
+                    continue
+        out.append(c)
+        i += 1
+    return "".join(out)
+
+
 def load_json(raw: str) -> dict:
-    """Accept the subagent's reply as-is: pure JSON, or JSON wrapped in prose/fences."""
+    """Accept the subagent's reply as-is: pure JSON, or JSON wrapped in prose/fences.
+    Unescaped quotes inside strings are repaired before giving up."""
     m = re.search(r"\{.*\}", raw, re.S)
     if not m:
         raise ValueError("no JSON object found")
-    return json.loads(m.group(0))
+    try:
+        return json.loads(m.group(0))
+    except json.JSONDecodeError:
+        return json.loads(_escape_inner_quotes(m.group(0)))
 
 
 def quoted(text: str, evidence: str) -> bool:

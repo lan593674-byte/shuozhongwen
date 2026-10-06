@@ -21,6 +21,7 @@ Exit code 0 = passed.
 from __future__ import annotations
 
 import argparse
+import http.client
 import json
 import sys
 import time
@@ -64,7 +65,8 @@ def chat(system: str, user: str, model: str, base: str, key: str | None, timeout
         except urllib.error.HTTPError as error:
             if error.code in (400, 401, 403, 404) or attempt == 2:
                 raise RuntimeError(f"HTTP {error.code}: {error.read()[:300].decode('utf-8', 'replace')}") from None
-        except (urllib.error.URLError, TimeoutError):
+        except (urllib.error.URLError, TimeoutError, ConnectionError, http.client.HTTPException):
+            # dropped connections (RemoteDisconnected) are transient: retry like timeouts
             if attempt == 2:
                 raise
         time.sleep(10 * (attempt + 1))

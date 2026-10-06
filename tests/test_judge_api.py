@@ -144,3 +144,34 @@ def test_judge_prompt_carries_the_task_only_when_given():
     assert with_task.startswith("文体：课程论坛帖（说明文）\n\n任务：介绍亚北极的普遍描述，并对比克里人\n\n正文：")
     assert "任务" not in judge_api.prompt("judge", "正文内容", "周报")
     assert "任务" not in judge_api.prompt("lunwen-judge", "正文内容", "课程设计报告", task="改语言")
+
+
+def test_chat_retries_a_dropped_connection(monkeypatch):
+    import socket
+    calls = {"n": 0}
+
+    class H(BaseHTTPRequestHandler):
+        def do_POST(self):
+            self.rfile.read(int(self.headers["Content-Length"]))
+            calls["n"] += 1
+            if calls["n"] == 1:  # close without answering: RemoteDisconnected on the client
+                self.close_connection = True
+                self.connection.shutdown(socket.SHUT_RDWR)
+                return
+            body = json.dumps({"choices": [{"message": {"content": "收到"}}]}).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *a):
+            pass
+
+    srv = HTTPServer(("127.0.0.1", 0), H)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    monkeypatch.setattr(judge_api.time, "sleep", lambda s: None)
+    try:
+        assert judge_api.chat("s", "u", "m", f"http://127.0.0.1:{srv.server_port}/v1", None, timeout=10) == "收到"
+    finally:
+        srv.shutdown()
+    assert calls["n"] == 2
