@@ -13,7 +13,7 @@ environment variables SHUOZHONGWEN_API_BASE / _MODEL / _API_KEY override it).
 The same calls are offered to Claude Code as MCP tools by judge_mcp.py.
 
 Usage:
-  judge_api.py 稿件 --genre 城市随笔散文 [--model M] [--no-facts] [--own] [--out-dir 目录] [--json]
+  judge_api.py 稿件 --genre 城市随笔散文 [--task 题目原话] [--model M] [--no-facts] [--own] [--out-dir 目录] [--json]
   judge_api.py 改稿 --genre 课程设计报告 --paper --original 原稿   (/shuozhongwen lunwen)
 Exit code 0 = passed.
 """
@@ -71,9 +71,10 @@ def chat(system: str, user: str, model: str, base: str, key: str | None, timeout
     raise RuntimeError(f"{model} returned no answer")
 
 
-def prompt(role: str, text: str, genre: str = "", original: str = "") -> str:
+def prompt(role: str, text: str, genre: str = "", original: str = "", task: str = "") -> str:
     if role in ("judge", "lunwen-judge"):
-        return f"文体：{genre}\n\n正文：\n<<<\n{text}\n>>>"
+        head = f"文体：{genre}\n\n" + (f"任务：{task}\n\n" if task and role == "judge" else "")
+        return f"{head}正文：\n<<<\n{text}\n>>>"
     if role == "factcheck":
         return f"正文：\n<<<\n{text}\n>>>"
     if role == "rigor":
@@ -81,18 +82,21 @@ def prompt(role: str, text: str, genre: str = "", original: str = "") -> str:
     raise ValueError(role)
 
 
-def call_role(role: str, text: str, genre: str = "", original: str = "", model: str | None = None) -> tuple[str, str]:
+def call_role(role: str, text: str, genre: str = "", original: str = "", model: str | None = None,
+              task: str = "") -> tuple[str, str]:
     """One fresh, stateless request for one judge role. Returns (model, raw reply)."""
     r = judge_config.resolve(role, model)
     if not r["model"]:
         raise RuntimeError(judge_config.ready(role)[1])
-    return r["model"], chat(rubric(role), prompt(role, text, genre, original), r["model"], r["base"], r["key"], r["timeout"])
+    return r["model"], chat(rubric(role), prompt(role, text, genre, original, task), r["model"], r["base"], r["key"],
+                            r["timeout"])
 
 
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("path", help="稿件文件")
     p.add_argument("--genre", required=True, help="文体，如 城市随笔散文、周报、知乎回答")
+    p.add_argument("--task", default="", help="任务：用户的题目或要求原话（评委据此判是否偏题）")
     p.add_argument("--model", help="临时指定模型，覆盖配置文件")
     p.add_argument("--no-facts", action="store_true", help="不做事实核查（论文模式本来就不做，外部事实由严谨性审查列给作者）")
     p.add_argument("--own", action="store_true", help="只给题目、没有材料的稿子：事实存疑要改到 0；不加则存疑只列给作者")
@@ -114,7 +118,7 @@ def main() -> int:
     out.mkdir(parents=True, exist_ok=True)
 
     with ThreadPoolExecutor(max_workers=3) as ex:
-        jr = ex.submit(call_role, judge_role, text, a.genre, "", a.model)
+        jr = ex.submit(call_role, judge_role, text, a.genre, "", a.model, a.task)
         fr = ex.submit(call_role, "factcheck", text, "", "", a.model) if facts_on else None
         gr = ex.submit(call_role, "rigor", text, "", original, a.model) if original is not None else None
         model, review_raw = jr.result()

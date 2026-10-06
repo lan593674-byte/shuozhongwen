@@ -83,3 +83,30 @@ def test_score_and_check_can_be_switched_off(tmp_path):
     out = run({"message_id": "m4", "index": 0, "final": True, "delta": LONG}, tmp_path,
               SHUOZHONGWEN_SCORE="0", SHUOZHONGWEN_CHECK="0")
     assert out == LONG
+
+
+REPORT = """---
+
+【修改报告】
+
+- 文体：课程论坛帖（说明文）
+- 主线：亚北极的普遍描述放到克里人身上对得上，放到整个北方森林不都对。
+- 数据核对：材料数据清单 9 条，文章用了其中 6 条，逐条对过，全部一致。
+- 编辑审读：第 1 轮；六项：具体 4 / 发现 3 / 语言 4 / 节奏 4 / 结构 4 / 声音 3；白开水：否。
+- 照改的意见：删掉了开头的报幕句；把“材料里只有两条”这类交代删掉。
+- 事实核查：存疑 0 条。
+- 待作者核对：无。
+- 建议作者补充的细节：你自己对克里人反对水电工程的看法（如果题目要求表态）。
+- 硬闸：不可见字符 0；四条机械扫描全过；结构套路 0 处；AI 相似度 0.38（中）。
+"""
+
+
+def test_delivery_scores_the_article_not_the_report(tmp_path):
+    # 《一件小事》 alone is low; with a revision report appended the whole reply
+    # scores high, which is what the footer used to show for every delivery.
+    article = (Path(__file__).resolve().parents[1] / "calibration" / "human" / "鲁迅_一件小事.txt").read_text(encoding="utf-8")
+    out = run({"message_id": "m5", "index": 0, "final": True, "delta": article + "\n\n" + REPORT}, tmp_path)
+    line = out.split("\n---\n")[-1].strip().splitlines()[0]
+    assert line.startswith("*正文 AI 相似度（不含修改报告）") and "（低" in line
+    plain = run({"message_id": "m6", "index": 0, "final": True, "delta": article}, tmp_path)
+    assert plain.split("\n---\n")[-1].strip().splitlines()[0].startswith("*AI 相似度 ")

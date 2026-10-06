@@ -42,7 +42,9 @@ TEXT_PROPS = {
 }
 TOOLS = [
     {"name": "judge", "description": "用外部模型做 shuozhongwen 编辑审读：全新的一次请求，只带评分标准、文体和正文。返回核对后的结论（证据是否原文、模板腔、是否过线）和原始 JSON。",
-     "inputSchema": {"type": "object", "properties": {"genre": {"type": "string", "description": "文体，如 城市随笔散文、课程论坛帖、周报"}, **TEXT_PROPS},
+     "inputSchema": {"type": "object", "properties": {"genre": {"type": "string", "description": "文体，如 城市随笔散文、课程论坛帖、周报"},
+                                                     "task": {"type": "string", "description": "任务：用户的题目或要求原话，评委据此判是否偏题（可选）"},
+                                                     **TEXT_PROPS},
                      "required": ["genre"]}},
     {"name": "factcheck", "description": "用外部模型做 shuozhongwen 事实核查：全新的一次请求，只带核查标准和正文全文。",
      "inputSchema": {"type": "object", "properties": {**TEXT_PROPS, "own": {"type": "boolean", "description": "只给题目、没有材料的稿子设为 true：存疑要改到 0"}}}},
@@ -76,7 +78,7 @@ def run_tool(name: str, args: dict) -> str:
     text = _text(args)
     genre = str(args.get("genre", ""))
     original = _text(args, "original", "original_path") if role == "rigor" else ""
-    model, raw = judge_api.call_role(role, text, genre, original)
+    model, raw = judge_api.call_role(role, text, genre, original, task=str(args.get("task", "") or ""))
     data = review_zh.load_json(raw)
     if role in ("judge", "lunwen-judge"):
         r = review_zh.check_review(text, data, genre, paper=role == "lunwen-judge")

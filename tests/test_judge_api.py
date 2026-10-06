@@ -136,3 +136,11 @@ def test_mcp_server_lists_tools_and_judges_through_the_configured_model(tmp_path
     text = out[3]["result"]["content"][0]["text"]
     assert "评委模型：mock" in text and "结论：通过" in text
     assert len(seen) == 1 and len(seen[0]["messages"]) == 2  # one fresh request, rubric + text only
+
+
+def test_judge_prompt_carries_the_task_only_when_given():
+    import judge_api
+    with_task = judge_api.prompt("judge", "正文内容", "课程论坛帖（说明文）", task="介绍亚北极的普遍描述，并对比克里人")
+    assert with_task.startswith("文体：课程论坛帖（说明文）\n\n任务：介绍亚北极的普遍描述，并对比克里人\n\n正文：")
+    assert "任务" not in judge_api.prompt("judge", "正文内容", "周报")
+    assert "任务" not in judge_api.prompt("lunwen-judge", "正文内容", "课程设计报告", task="改语言")
