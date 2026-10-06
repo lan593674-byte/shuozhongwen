@@ -80,20 +80,24 @@ def chat(system: str, user: str, model: str, base: str, key: str | None, timeout
     if key:
         headers["Authorization"] = "Bearer " + key
     req = urllib.request.Request(base.rstrip("/") + "/chat/completions", data=json.dumps(body).encode(), headers=headers)
-    for attempt in range(3):
+    attempts = 5
+    for attempt in range(attempts):
+        wait = 10 * (attempt + 1)
         try:
             with urllib.request.urlopen(req, timeout=timeout) as r:
                 content = _read_reply(r)
             if content.strip():
                 return content
         except urllib.error.HTTPError as error:
-            if error.code in (400, 401, 403, 404) or attempt == 2:
+            if error.code in (400, 401, 403, 404) or attempt == attempts - 1:
                 raise RuntimeError(f"HTTP {error.code}: {error.read()[:300].decode('utf-8', 'replace')}") from None
+            if error.code == 429:  # rate or concurrency limit (Ark: InflightBatchsizeExceeded): back off longer
+                wait = 30 * (attempt + 1)
         except (urllib.error.URLError, TimeoutError, ConnectionError, http.client.HTTPException):
             # dropped connections (RemoteDisconnected) are transient: retry like timeouts
-            if attempt == 2:
+            if attempt == attempts - 1:
                 raise
-        time.sleep(10 * (attempt + 1))
+        time.sleep(wait)
     raise RuntimeError(f"{model} returned no answer")
 
 

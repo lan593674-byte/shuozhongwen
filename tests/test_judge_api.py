@@ -202,3 +202,34 @@ def test_chat_reads_a_streamed_reply_and_skips_reasoning():
         assert judge_api.chat("s", "u", "m", f"http://127.0.0.1:{srv.server_port}/v1", None, timeout=10) == '{"a": 1}'
     finally:
         srv.shutdown()
+
+
+def test_chat_backs_off_on_a_rate_limit(monkeypatch):
+    calls, waits = {"n": 0}, []
+
+    class H(BaseHTTPRequestHandler):
+        def do_POST(self):
+            self.rfile.read(int(self.headers["Content-Length"]))
+            calls["n"] += 1
+            if calls["n"] <= 2:
+                self.send_response(429)
+                self.end_headers()
+                self.wfile.write(b'{"error": {"code": "InflightBatchsizeExceeded"}}')
+                return
+            body = json.dumps({"choices": [{"message": {"content": "ok"}}]}).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *a):
+            pass
+
+    srv = HTTPServer(("127.0.0.1", 0), H)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    monkeypatch.setattr(judge_api.time, "sleep", waits.append)
+    try:
+        assert judge_api.chat("s", "u", "m", f"http://127.0.0.1:{srv.server_port}/v1", None, timeout=10) == "ok"
+    finally:
+        srv.shutdown()
+    assert calls["n"] == 3 and waits == [30, 60]
