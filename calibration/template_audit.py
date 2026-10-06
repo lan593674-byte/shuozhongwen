@@ -30,8 +30,7 @@ import structure_scan  # noqa: E402
 
 PIECE = 1500
 GROUPS = (
-    ("经典名作", lambda n: not n.startswith(("zhihu", "qidian", "tieba")), "human"),
-    ("知乎高赞", lambda n: n.startswith("zhihu"), "human"),
+    ("经典名作", lambda n: not n.startswith(("qidian", "tieba")), "human"),
     ("网文和贴吧", lambda n: n.startswith(("qidian", "tieba")), "human"),
     ("AI 样本（8 个模型）", lambda n: True, "ai"),
 )

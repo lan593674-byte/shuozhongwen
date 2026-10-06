@@ -32,12 +32,13 @@ CAL = ROOT / "calibration"
 FEATURES = score_zh.FEATURES
 # Allowed weight direction per feature (+1: higher means more AI-like, -1: lower
 # means more AI-like, 0: reported only). A feature gets a sign only when AI text
-# differs from BOTH human groups (classics and pre-2020 Zhihu) in that direction;
-# clauses_per_sent and connector_para_lead fail that test and never count.
+# differs from BOTH human groups (classics; web novels and Tieba posts) in that
+# direction; clauses_per_sent, connector_para_lead, i_per_k and quote_per_k fail
+# that test and never count.
 SIGNS = {"sent_cv": -1, "para_cv": -1, "clauses_per_sent": 0, "connector_per_k": -1,
          "connector_para_lead": 0, "start_repeat": -1, "format_ratio": 1,
          "bigram_mattr": 1, "marker_per_k": 1, "we_per_k": 1, "de_per_k": -1,
-         "colon_per_k": 1, "closer": 1, "i_per_k": -1, "quote_per_k": 1,
+         "colon_per_k": 1, "closer": 1, "i_per_k": 0, "quote_per_k": 0,
          "ellipsis_per_k": -1, "exclaim_per_k": -1, "question_per_k": -1, "dash_per_k": -1}
 
 
@@ -66,8 +67,6 @@ def chunks(text: str, start: int = 0) -> list[str]:
 def source_kind(stem: str, y: int) -> str:
     if y:
         return stem.split("__")[0]  # model name
-    if stem.startswith("zhihu_"):
-        return "知乎回答"
     if stem.startswith("qidian_"):
         return "起点网文"
     if stem.startswith("tieba_"):
@@ -237,7 +236,7 @@ def main() -> int:
     c = model["corpus"]
     lines = [
         "# 校准结果", "",
-        f"日期：{date.today()}。人类侧 {c['human_sources']} 篇（经典名作 + 2020 年前的知乎高赞回答和贴吧文章，均经人工审核）切成 {c['human_chunks']} 段；"
+        f"日期：{date.today()}。人类侧 {c['human_sources']} 篇（经典名作、贴吧长帖、起点网文免费章节，均经人工审核）切成 {c['human_chunks']} 段；"
         f"AI 侧 {c['ai_sources']} 篇（{len(models)} 个模型）切成 {c['ai_chunks']} 段。每段 250–900 字，两边切法相同。",
         "", "## 分组交叉验证（整篇文章一起留出，不是训练集内成绩）", "",
         f"- 以 0.5 为界的准确率：{acc05:.1%}",
@@ -265,7 +264,7 @@ def main() -> int:
               "", "## 局限", "",
               "- 分数只说明这些统计信号像不像校准集里的 AI 文本，不代表任何商业检测器的结论。",
               "- 被要求“写得自然一点”的 AI 文本明显更难认出，见留一模型检验和 AI 命中率。",
-              "- 人类侧没有当代口语、网文、公文样本，这几类文体的误判率未知。",
+              "- 人类侧没有公文样本，公文的误判率未知。口语和网文的留出测试见 TEST_RESULTS.md。",
               "- 扩充语料后重跑 `python calibration/calibrate.py` 即可更新模型。", ""]
     (CAL / "RESULTS.md").write_text("\n".join(lines), encoding="utf-8")
     print("\n".join(lines))

@@ -6,7 +6,7 @@
 >
 > **Notice:** the texts in this folder, `calibration/human/` and `calibration/test/` are for personal study and research only; no commercial use. Copyright remains with the original authors and platforms; the MIT license of this repository does **not** cover them. Rights holders can open an issue to request removal.
 
-- `calibration/human/`：训练用的 339 篇人类文字。其中 25 篇现代经典（鲁迅、朱自清、萧红、许地山、胡适、徐志摩）取自维基文库，已进入公有领域；其余是 2020 年以前的知乎高赞回答、贴吧长帖和起点免费章节，都经过人工审核，营销、搬运类已剔除（记录见 `calibration/rejected.txt`）。
+- `calibration/human/`：训练用的 62 篇人类文字。其中 25 篇现代经典（鲁迅、朱自清、萧红、许地山、胡适、徐志摩）取自维基文库，已进入公有领域；其余是贴吧长帖和起点免费章节，都经过人工审核，营销、搬运类已剔除（记录见 `calibration/rejected.txt`）。
 - `calibration/test/`：没有参与训练的留出测试文本，`spoken/` 是贴吧口语长帖，`webnovel/` 是 2024 年以前开始连载的起点网文免费章节。
 - `MANIFEST.csv`：每一篇的文件路径、来源、原文链接、字数、用途（训练或测试），由 `calibration/build_manifest.py` 生成。
 
