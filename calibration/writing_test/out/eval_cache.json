@@ -310,5 +310,842 @@
   ],
   "devices": [],
   "summary": "信息准、路线清楚，但结构偏报幕式，像规整的资料整理而非有讲解感的论坛帖。"
+ },
+ "score|deepseek-v4-pro|old|T1|draft1|0": {
+  "average": 4.17,
+  "valid": true,
+  "passed": false,
+  "dims": {
+   "concrete": 5,
+   "insight": 4,
+   "language": 4,
+   "rhythm": 4,
+   "structure": 4,
+   "voice": 4
+  },
+  "flat": false,
+  "off_task": true,
+  "templates": [
+   "报幕句"
+  ],
+  "devices": [],
+  "summary": "内容准确完整，三大工程配合和长寿原因都讲清楚了，但篇幅超限，开头报幕句略冗余。"
+ },
+ "score|deepseek-v4-pro|old|T1|draft1|1": {
+  "average": 4.33,
+  "valid": true,
+  "passed": false,
+  "dims": {
+   "concrete": 5,
+   "insight": 5,
+   "language": 4,
+   "rhythm": 4,
+   "structure": 4,
+   "voice": 4
+  },
+  "flat": false,
+  "off_task": true,
+  "templates": [
+   "报幕句"
+  ],
+  "devices": [],
+  "summary": "三大工程配合关系和岁修原因讲得具体清楚，篇幅略超要求。"
+ },
+ "score|deepseek-v4-pro|old|T4|draft1|2": {
+  "average": 3.0,
+  "valid": true,
+  "passed": false,
+  "dims": {
+   "concrete": 4,
+   "insight": 3,
+   "language": 4,
+   "rhythm": 2,
+   "structure": 2,
+   "voice": 3
+  },
+  "flat": false,
+  "off_task": true,
+  "templates": [],
+  "devices": [],
+  "summary": "有具体细节和克制的叙述，但篇幅远不足要求，像素材片段未展开成完整散文。"
+ },
+ "score|deepseek-v4-pro|old|T4|final|1": {
+  "average": null,
+  "error": "JSONDecodeError: Expecting ',' delimiter: line 1 column 1042 (char 1041)"
+ },
+ "score|deepseek-v4-pro|old|T4|final|0": {
+  "average": 2.83,
+  "valid": true,
+  "passed": false,
+  "dims": {
+   "concrete": 4,
+   "insight": 2,
+   "language": 4,
+   "rhythm": 2,
+   "structure": 2,
+   "voice": 3
+  },
+  "flat": false,
+  "off_task": true,
+  "templates": [],
+  "devices": [],
+  "summary": "细节具体、结尾有余味，但篇幅远未达到要求，整体更像素材提纲而非完整散文。"
+ },
+ "score|deepseek-v4-pro|old|T1|draft1|2": {
+  "average": 4.0,
+  "valid": true,
+  "passed": false,
+  "dims": {
+   "concrete": 4,
+   "insight": 4,
+   "language": 4,
+   "rhythm": 4,
+   "structure": 4,
+   "voice": 4
+  },
+  "flat": false,
+  "off_task": true,
+  "templates": [],
+  "devices": [],
+  "summary": "信息准确、主线清楚，三大工程配合讲得明白，但字数超标，结尾略散。"
+ },
+ "score|deepseek-v4-pro|old|T4|final|2": {
+  "average": 3.67,
+  "valid": true,
+  "passed": false,
+  "dims": {
+   "concrete": 4,
+   "insight": 3,
+   "language": 4,
+   "rhythm": 3,
+   "structure": 4,
+   "voice": 4
+  },
+  "flat": false,
+  "off_task": true,
+  "templates": [],
+  "devices": [],
+  "summary": "细节真实、语气克制，结尾照片留白有力，但篇幅严重不足，中段近乎清点细节，未充分展开。"
+ },
+ "score|deepseek-v4-pro|old|T5|final|0": {
+  "average": 4.83,
+  "valid": true,
+  "passed": true,
+  "dims": {
+   "concrete": 5,
+   "insight": 5,
+   "language": 5,
+   "rhythm": 5,
+   "structure": 4,
+   "voice": 5
+  },
+  "flat": false,
+  "off_task": false,
+  "templates": [],
+  "devices": [],
+  "summary": "一篇具体、清晰的科普说明文，用日影实测和历法沿革把二十四节气的定法讲得明白，结尾农历闰月部分可稍收束回主线。"
+ },
+ "score|deepseek-v4-pro|old|T5|final|1": {
+  "average": 4.5,
+  "valid": true,
+  "passed": true,
+  "dims": {
+   "concrete": 5,
+   "insight": 4,
+   "language": 5,
+   "rhythm": 4,
+   "structure": 4,
+   "voice": 5
+  },
+  "flat": false,
+  "off_task": false,
+  "templates": [],
+  "devices": [],
+  "summary": "一篇具体、清晰的科普说明文，用圭表测影和平气定气的演变把二十四节气的定法讲得明白，只是末尾闰月部分略游离主线。"
+ },
+ "score|deepseek-v4-pro|new|T1|final|0": {
+  "average": 4.0,
+  "valid": true,
+  "passed": true,
+  "dims": {
+   "concrete": 4,
+   "insight": 4,
+   "language": 4,
+   "rhythm": 4,
+   "structure": 4,
+   "voice": 4
+  },
+  "flat": false,
+  "off_task": false,
+  "templates": [],
+  "devices": [],
+  "summary": "说明准确、取舍得当，按水流顺序写清了三大工程配合关系，但语言偏平实、个别比喻较旧，声音再带一点论坛讲解感会更好。"
+ },
+ "score|deepseek-v4-pro|old|T5|final|2": {
+  "average": 4.5,
+  "valid": true,
+  "passed": true,
+  "dims": {
+   "concrete": 5,
+   "insight": 4,
+   "language": 5,
+   "rhythm": 4,
+   "structure": 4,
+   "voice": 5
+  },
+  "flat": false,
+  "off_task": false,
+  "templates": [],
+  "devices": [],
+  "summary": "用具体数据和历史节点把二十四节气从测影到定气的脉络讲得清楚，结尾闰月部分稍偏但整体是称职的科普说明文。"
+ },
+ "score|deepseek-v4-pro|old|T5|draft1|1": {
+  "average": 4.33,
+  "valid": true,
+  "passed": false,
+  "dims": {
+   "concrete": 5,
+   "insight": 4,
+   "language": 5,
+   "rhythm": 4,
+   "structure": 3,
+   "voice": 5
+  },
+  "flat": false,
+  "off_task": true,
+  "templates": [],
+  "devices": [],
+  "summary": "内容具体、主线清楚，从圭表测影到平气定气脉络扎实，但篇幅超限且结尾闰月段冲淡了核心问题。"
+ },
+ "score|deepseek-v4-pro|new|T1|final|1": {
+  "average": 4.0,
+  "valid": true,
+  "passed": true,
+  "dims": {
+   "concrete": 4,
+   "insight": 4,
+   "language": 4,
+   "rhythm": 4,
+   "structure": 4,
+   "voice": 4
+  },
+  "flat": false,
+  "off_task": false,
+  "templates": [],
+  "devices": [],
+  "summary": "说明准确、层次清楚，三大工程的配合与沿用原因都交代得具体，但语言平实，略显标准说明文腔。"
+ },
+ "score|deepseek-v4-pro|old|T5|draft1|0": {
+  "average": 4.67,
+  "valid": true,
+  "passed": true,
+  "dims": {
+   "concrete": 5,
+   "insight": 5,
+   "language": 5,
+   "rhythm": 4,
+   "structure": 4,
+   "voice": 5
+  },
+  "flat": false,
+  "off_task": false,
+  "templates": [],
+  "devices": [],
+  "summary": "以测影、平气与定气为主线，数字和历史文献具体，适合初中生阅读；末段置闰内容可更紧地扣回“怎么定出来”的主线。"
+ },
+ "score|deepseek-v4-pro|new|T1|draft1|1": {
+  "average": 4.0,
+  "valid": true,
+  "passed": true,
+  "dims": {
+   "concrete": 4,
+   "insight": 4,
+   "language": 4,
+   "rhythm": 4,
+   "structure": 4,
+   "voice": 4
+  },
+  "flat": false,
+  "off_task": false,
+  "templates": [],
+  "devices": [],
+  "summary": "这是一篇清楚、取舍得当的课程论坛说明文，三大工程配合与长寿原因都讲明白了，但语言偏教科书口吻，尚缺一点贯穿性的判断。"
+ },
+ "score|deepseek-v4-pro|new|T2|draft1|0": {
+  "average": 4.83,
+  "valid": true,
+  "passed": true,
+  "dims": {
+   "concrete": 5,
+   "insight": 4,
+   "language": 5,
+   "rhythm": 5,
+   "structure": 5,
+   "voice": 5
+  },
+  "flat": false,
+  "off_task": false,
+  "templates": [],
+  "devices": [],
+  "summary": "一篇细节扎实、叙述克制的短篇小说，在规则与困窘之间写出了末班车夜晚的暗流。"
+ },
+ "score|deepseek-v4-pro|new|T1|draft1|0": {
+  "average": 4.0,
+  "valid": true,
+  "passed": true,
+  "dims": {
+   "concrete": 4,
+   "insight": 4,
+   "language": 4,
+   "rhythm": 4,
+   "structure": 4,
+   "voice": 4
+  },
+  "flat": false,
+  "off_task": false,
+  "templates": [],
+  "devices": [],
+  "summary": "一篇准确、取舍得当的说明文，三大工程配合与岁修原因讲得清楚，但语言平稳、亮点不足。"
+ },
+ "score|deepseek-v4-pro|new|T2|final|0": {
+  "average": 5.0,
+  "valid": false,
+  "passed": false,
+  "dims": {
+   "concrete": 5,
+   "insight": 5,
+   "structure": 5,
+   "voice": 5
+  },
+  "flat": false,
+  "off_task": false,
+  "templates": [],
+  "devices": [],
+  "summary": "一篇克制、具体、余味干净的短篇，用“两度电”与“三百多度电”的对照写出制度性安全与个人责任之间的缝隙。"
+ },
+ "score|deepseek-v4-pro|new|T1|draft1|2": {
+  "average": 4.5,
+  "valid": true,
+  "passed": true,
+  "dims": {
+   "concrete": 5,
+   "insight": 4,
+   "language": 4,
+   "rhythm": 4,
+   "structure": 5,
+   "voice": 5
+  },
+  "flat": false,
+  "off_task": false,
+  "templates": [],
+  "devices": [],
+  "summary": "作为课程说明文，三大工程配合和长寿原因都交代得具体清楚，只略显平铺和个别套话。"
+ },
+ "score|deepseek-v4-pro|new|T1|final|2": {
+  "average": 4.67,
+  "valid": true,
+  "passed": true,
+  "dims": {
+   "concrete": 5,
+   "insight": 4,
+   "language": 5,
+   "rhythm": 4,
+   "structure": 5,
+   "voice": 5
+  },
+  "flat": false,
+  "off_task": false,
+  "templates": [],
+  "devices": [],
+  "summary": "说明准确具体、术语清楚，三大工程与岁修原因均覆盖；若把“如何配合”与“为何两千年”的因果再串得更紧，会更出色。"
+ },
+ "score|deepseek-v4-pro|old|T5|draft1|2": {
+  "average": 4.5,
+  "valid": true,
+  "passed": true,
+  "dims": {
+   "concrete": 5,
+   "insight": 5,
+   "language": 4,
+   "rhythm": 4,
+   "structure": 5,
+   "voice": 4
+  },
+  "flat": false,
+  "off_task": false,
+  "templates": [],
+  "devices": [],
+  "summary": "以日影实测为线索，把节气的定法、从平气到定气的演进和农历中的表现讲得具体、准确、有层次，适合初中生阅读。"
+ },
+ "score|deepseek-v4-pro|new|T2|draft1|1": {
+  "average": 4.67,
+  "valid": true,
+  "passed": true,
+  "dims": {
+   "concrete": 5,
+   "insight": 4,
+   "language": 4,
+   "rhythm": 5,
+   "structure": 5,
+   "voice": 5
+  },
+  "flat": false,
+  "off_task": false,
+  "templates": [],
+  "devices": [],
+  "summary": "一篇细节扎实、语调克制的微型小说，以一块两度电的电池写出安全规定与个体处境之间的张力，结尾余味干净。"
+ },
+ "score|deepseek-v4-pro|new|T2|final|1": {
+  "average": 4.83,
+  "valid": true,
+  "passed": true,
+  "dims": {
+   "concrete": 5,
+   "insight": 4,
+   "language": 5,
+   "rhythm": 5,
+   "structure": 5,
+   "voice": 5
+  },
+  "flat": false,
+  "off_task": false,
+  "templates": [],
+  "devices": [],
+  "summary": "一篇切口极小、细节真切、把安全焦虑与人情分寸压进一次末班车程的干净短篇，几乎没有废笔。"
+ },
+ "score|deepseek-v4-pro|new|T3|draft1|0": {
+  "average": 3.33,
+  "valid": true,
+  "passed": false,
+  "dims": {
+   "concrete": 5,
+   "insight": 4,
+   "language": 4,
+   "rhythm": 3,
+   "structure": 2,
+   "voice": 2
+  },
+  "flat": false,
+  "off_task": false,
+  "templates": [
+   "段首短判断",
+   "段首短判断",
+   "段首短判断",
+   "段首短判断",
+   "报幕句",
+   "反复标出处",
+   "反复标出处"
+  ],
+  "devices": [],
+  "summary": "文章有具体数据和清晰观点，但段落组织高度模板化，削弱了个人声音和结构张力。"
+ },
+ "score|deepseek-v4-pro|new|T2|draft1|2": {
+  "average": 4.83,
+  "valid": true,
+  "passed": true,
+  "dims": {
+   "concrete": 5,
+   "insight": 4,
+   "language": 5,
+   "rhythm": 5,
+   "structure": 5,
+   "voice": 5
+  },
+  "flat": false,
+  "off_task": false,
+  "templates": [],
+  "devices": [],
+  "summary": "克制、具体，靠一块电池把安全焦虑与底层温情绷到最后，完成度很高。"
+ },
+ "score|deepseek-v4-pro|new|T3|final|2": {
+  "average": 4.67,
+  "valid": true,
+  "passed": true,
+  "dims": {
+   "concrete": 5,
+   "insight": 5,
+   "language": 4,
+   "rhythm": 5,
+   "structure": 4,
+   "voice": 5
+  },
+  "flat": false,
+  "off_task": false,
+  "templates": [],
+  "devices": [],
+  "summary": "一篇有数据、有细节、有代际态度的知乎回答，切题且不落套，只需局部收束更紧。"
+ },
+ "score|deepseek-v4-pro|new|T2|final|2": {
+  "average": 5.0,
+  "valid": true,
+  "passed": true,
+  "dims": {
+   "concrete": 5,
+   "insight": 5,
+   "language": 5,
+   "rhythm": 5,
+   "structure": 5,
+   "voice": 5
+  },
+  "flat": false,
+  "off_task": false,
+  "templates": [],
+  "devices": [],
+  "summary": "一篇克制、具体、不点破的短篇，用一块两度电的电池写出安全、善意与人之常情之间的暗流。"
+ },
+ "score|deepseek-v4-pro|new|T3|final|0": {
+  "average": null,
+  "error": "JSONDecodeError: Expecting ',' delimiter: line 1 column 987 (char 986)"
+ },
+ "score|deepseek-v4-pro|new|T3|draft1|1": {
+  "average": 4.0,
+  "valid": true,
+  "passed": false,
+  "dims": {
+   "concrete": 4,
+   "insight": 4,
+   "language": 4,
+   "rhythm": 4,
+   "structure": 4,
+   "voice": 4
+  },
+  "flat": false,
+  "off_task": false,
+  "templates": [
+   "段首短判断",
+   "段首短判断",
+   "段首短判断",
+   "段首短判断",
+   "段首短判断"
+  ],
+  "devices": [],
+  "summary": "一篇有数据和判断、结构清楚的知乎回答，稍欠更个人的声音，段落开头方式略统一。"
+ },
+ "score|deepseek-v4-pro|new|T4|draft1|0": {
+  "average": 3.83,
+  "valid": true,
+  "passed": false,
+  "dims": {
+   "concrete": 4,
+   "insight": 3,
+   "language": 4,
+   "rhythm": 4,
+   "structure": 4,
+   "voice": 4
+  },
+  "flat": false,
+  "off_task": true,
+  "templates": [],
+  "devices": [],
+  "summary": "细节具体、语言克制，结尾留有余味，但篇幅远未达到任务要求，内容未能充分展开。"
+ },
+ "score|deepseek-v4-pro|new|T4|draft1|2": {
+  "average": 3.83,
+  "valid": true,
+  "passed": false,
+  "dims": {
+   "concrete": 5,
+   "insight": 4,
+   "language": 4,
+   "rhythm": 3,
+   "structure": 3,
+   "voice": 4
+  },
+  "flat": false,
+  "off_task": true,
+  "templates": [],
+  "devices": [],
+  "summary": "细节具体、语言克制，有散文雏形，但篇幅远不足千字，结构停在片段连缀，未能充分展开。"
+ },
+ "score|deepseek-v4-pro|new|T3|final|1": {
+  "average": 4.67,
+  "valid": true,
+  "passed": true,
+  "dims": {
+   "concrete": 5,
+   "insight": 5,
+   "language": 5,
+   "rhythm": 4,
+   "structure": 4,
+   "voice": 5
+  },
+  "flat": false,
+  "off_task": false,
+  "templates": [],
+  "devices": [],
+  "summary": "全篇有数据、细节和明确态度，把不爱接电话解释为对“不由分说”的拒绝，结尾可再收束得利落一些。"
+ },
+ "score|deepseek-v4-pro|new|T4|final|0": {
+  "average": 4.5,
+  "valid": true,
+  "passed": false,
+  "dims": {
+   "concrete": 5,
+   "insight": 4,
+   "language": 5,
+   "rhythm": 4,
+   "structure": 4,
+   "voice": 5
+  },
+  "flat": false,
+  "off_task": true,
+  "templates": [],
+  "devices": [],
+  "summary": "用细节和克制收束写出灶台、外婆与时间，惜篇幅明显不足。"
+ },
+ "score|deepseek-v4-pro|new|T3|draft1|2": {
+  "average": 3.17,
+  "valid": true,
+  "passed": false,
+  "dims": {
+   "concrete": 4,
+   "insight": 4,
+   "language": 4,
+   "rhythm": 3,
+   "structure": 2,
+   "voice": 2
+  },
+  "flat": false,
+  "off_task": false,
+  "templates": [
+   "段首短判断",
+   "段首短判断",
+   "段首短判断",
+   "段首短判断",
+   "段首短判断"
+  ],
+  "devices": [],
+  "summary": "观点清楚、材料具体，但每段都用段首短判断搭架子，结构和声音被模板腔压得太平。"
+ },
+ "score|deepseek-v4-pro|new|T4|final|1": {
+  "average": 3.33,
+  "valid": true,
+  "passed": false,
+  "dims": {
+   "concrete": 4,
+   "insight": 3,
+   "language": 4,
+   "rhythm": 3,
+   "structure": 3,
+   "voice": 3
+  },
+  "flat": false,
+  "off_task": true,
+  "templates": [],
+  "devices": [],
+  "summary": "有具体感官细节和克制结尾，但篇幅明显不足，结构尚未展开成完整散文。"
+ },
+ "score|deepseek-v4-pro|new|T4|draft1|1": {
+  "average": 4.5,
+  "valid": true,
+  "passed": false,
+  "dims": {
+   "concrete": 5,
+   "insight": 4,
+   "language": 5,
+   "rhythm": 4,
+   "structure": 4,
+   "voice": 5
+  },
+  "flat": false,
+  "off_task": true,
+  "templates": [],
+  "devices": [],
+  "summary": "细节具体、语言干净、结尾含蓄有发现，但篇幅远未达千字要求，展开不足。"
+ },
+ "score|deepseek-v4-pro|new|T4|final|2": {
+  "average": 3.67,
+  "valid": true,
+  "passed": false,
+  "dims": {
+   "concrete": 4,
+   "insight": 4,
+   "language": 4,
+   "rhythm": 4,
+   "structure": 3,
+   "voice": 3
+  },
+  "flat": false,
+  "off_task": true,
+  "templates": [
+   "段首短判断",
+   "段首短判断"
+  ],
+  "devices": [],
+  "summary": "细节具体、结尾有余味，但篇幅严重不足，且两处段首判断使结构略显说明化。"
+ },
+ "score|deepseek-v4-pro|new|T5|final|2": {
+  "average": 4.83,
+  "valid": true,
+  "passed": true,
+  "dims": {
+   "concrete": 5,
+   "insight": 5,
+   "language": 5,
+   "rhythm": 4,
+   "structure": 5,
+   "voice": 5
+  },
+  "flat": false,
+  "off_task": false,
+  "templates": [],
+  "devices": [],
+  "summary": "一篇具体清楚、有历史纵深和数字支撑的科普说明文，少有套话，主线明白。"
+ },
+ "score|deepseek-v4-pro|new|T5|draft1|1": {
+  "average": 3.67,
+  "valid": true,
+  "passed": false,
+  "dims": {
+   "concrete": 4,
+   "insight": 4,
+   "language": 4,
+   "rhythm": 4,
+   "structure": 3,
+   "voice": 3
+  },
+  "flat": false,
+  "off_task": false,
+  "templates": [
+   "段首短判断",
+   "段首短判断",
+   "段首短判断"
+  ],
+  "devices": [],
+  "summary": "用圭表测影、平气和定气两阶段把二十四节气的定法讲得清楚，数字具体，但段首短判断多，结构像提纲。"
+ },
+ "score|glm-5.3|old|T1|final|1": {
+  "average": 4.33,
+  "valid": true,
+  "passed": true,
+  "dims": {
+   "concrete": 5,
+   "insight": 4,
+   "language": 4,
+   "rhythm": 4,
+   "structure": 5,
+   "voice": 4
+  },
+  "flat": false,
+  "off_task": false,
+  "templates": [],
+  "devices": [],
+  "summary": "按水的路线串起三处工程，\"分了两回\"一句把配合讲透，数字和物件都用得实；长寿原因一段是并列罗列而非因果，稍平。"
+ },
+ "score|deepseek-v4-pro|new|T5|final|0": {
+  "average": 4.83,
+  "valid": true,
+  "passed": true,
+  "dims": {
+   "concrete": 5,
+   "insight": 5,
+   "language": 5,
+   "rhythm": 4,
+   "structure": 5,
+   "voice": 5
+  },
+  "flat": false,
+  "off_task": false,
+  "templates": [],
+  "devices": [],
+  "summary": "一篇清晰、具体且有取舍的科普说明文，从圭表测影讲到定气，结构层层推进，结尾落在地域差异有余味。"
+ },
+ "score|deepseek-v4-pro|new|T5|final|1": {
+  "average": 4.67,
+  "valid": true,
+  "passed": true,
+  "dims": {
+   "concrete": 5,
+   "insight": 5,
+   "language": 4,
+   "rhythm": 4,
+   "structure": 5,
+   "voice": 5
+  },
+  "flat": false,
+  "off_task": false,
+  "templates": [],
+  "devices": [],
+  "summary": "以圭表测影切入，按时间顺序讲清从平气到定气的制定过程，数据具体、适合初中生，个别长句可再理顺。"
+ },
+ "score|deepseek-v4-pro|new|T5|draft1|0": {
+  "average": 4.33,
+  "valid": true,
+  "passed": false,
+  "dims": {
+   "concrete": 5,
+   "insight": 5,
+   "language": 5,
+   "rhythm": 5,
+   "structure": 3,
+   "voice": 3
+  },
+  "flat": false,
+  "off_task": false,
+  "templates": [
+   "段首短判断",
+   "段首短判断"
+  ],
+  "devices": [],
+  "summary": "全文把圭表测影、平气到定气的测定过程讲得具体清楚，数字和例子充分；主要问题是多段以短判断开头，说明腔让结构稍显板正。"
+ },
+ "score|deepseek-v4-pro|new|T5|draft1|2": {
+  "average": 4.0,
+  "valid": true,
+  "passed": false,
+  "dims": {
+   "concrete": 5,
+   "insight": 5,
+   "language": 5,
+   "rhythm": 5,
+   "structure": 2,
+   "voice": 2
+  },
+  "flat": false,
+  "off_task": false,
+  "templates": [
+   "段首短判断",
+   "段首短判断",
+   "段首短判断",
+   "段首短判断"
+  ],
+  "devices": [],
+  "summary": "材料具体、解释清楚，但全文靠段首判断句搭架子，结构和声音被模板腔明显拉低。"
+ },
+ "score|glm-5.3|old|T1|final|0": {
+  "average": 4.5,
+  "valid": true,
+  "passed": true,
+  "dims": {
+   "concrete": 5,
+   "insight": 4,
+   "language": 5,
+   "rhythm": 4,
+   "structure": 5,
+   "voice": 4
+  },
+  "flat": false,
+  "off_task": false,
+  "templates": [],
+  "devices": [],
+  "summary": "按水流走向把三处工程的配合讲得清楚有序，数字与材料扎实、动词准确，是一篇取舍得当的说明文；耐久原因一段稍显并列罗列，论坛帖的对话感也弱一点。"
+ },
+ "score|glm-5.3|old|T1|final|2": {
+  "average": 5.0,
+  "valid": true,
+  "passed": true,
+  "dims": {
+   "concrete": 5,
+   "insight": 5,
+   "language": 5,
+   "rhythm": 5,
+   "structure": 5,
+   "voice": 5
+  },
+  "flat": false,
+  "off_task": false,
+  "templates": [],
+  "devices": [],
+  "summary": "按水流路径组织的干净说明文：取舍精准、细节落到实处，'水往外江分了两回'一句把三处工程的配合点透，长寿原因答得稍简但站得住。"
  }
 }
