@@ -117,3 +117,11 @@ def test_heard_in_class_is_a_hint_not_a_ban():
     by = {x["rule"]: x for x in r["rules"]}
     assert by["source_mention"]["count"] == 1 and not by["source_mention"]["gate"]
     assert by["meta_source"]["passed"] and r["passed"]
+
+
+def test_short_paragraph_openers_are_listed_not_blocking():
+    body = "冬至到小寒只有十四天多一点，夏至到小暑却有十五天多，差出来的这一天，是地球离太阳远近不同造成的，古人用了好几百年才弄明白。"
+    text = "\n\n".join(["从这个冬至到下一个冬至是一年。" + body, "可太阳走得并不匀。" + body, body])
+    r = ss.scan(text)
+    assert r["openers"] == ["从这个冬至到下一个冬至是一年。", "可太阳走得并不匀。"]
+    assert r["passed"] and "段首第一句很短的段落 2 个" in ss.report(r)

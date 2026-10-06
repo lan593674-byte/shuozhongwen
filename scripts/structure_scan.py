@@ -100,6 +100,7 @@ GATES = {"short_lead", "summary_flip", "attribution_repeat", "meta_source"}
 STACK_LIMIT = 3
 SHORT_LEAD_MIN = 3        # at least this many hits before the share counts
 SHORT_LEAD_MAX_HAN = 10   # a "short verdict" opener has at most this many Han characters
+OPENER_MAX_HAN = 20       # listed for review (not counted): what the judges call 段首短判断
 
 
 def _han(s: str) -> int:
@@ -232,11 +233,21 @@ def scan(text: str, paper: bool = False) -> dict:
                 sentence_quotes += 1
             elif not SPEECH_BEFORE.search(before):
                 quotes.append(m.group(0))
+    # Paragraphs that open with one short sentence (20 Han characters or fewer).
+    # The judges' 段首短判断 is wider than the short_lead gate above (they flag
+    # "从这个冬至到下一个冬至是一年。" and "可太阳走得并不匀。"), but a short
+    # opener is just as often plain narration (classics: 58% of pieces have three),
+    # so this only lists them for the writer to check, and never blocks.
+    openers = []
+    for p in long_paras:
+        first = SENT.match(QUOTED.sub("", p))
+        if first and _han(first.group(0)) <= OPENER_MAX_HAN and first.group(0).rstrip()[-1] in "。":
+            openers.append(first.group(0).strip())
     over = [r["label"] for r in rules if not r["passed"]]
     stacked = len(over) > STACK_LIMIT
     return {"passed": passed and not stacked, "paragraphs": len(prose), "long_paragraphs": len(long_paras),
             "rules": rules, "stacked": {"count": len(over), "limit": STACK_LIMIT, "passed": not stacked, "rules": over},
-            "quotes": quotes, "sentence_quotes": sentence_quotes}
+            "quotes": quotes, "sentence_quotes": sentence_quotes, "openers": openers}
 
 
 def report(r: dict) -> str:
@@ -255,6 +266,10 @@ def report(r: dict) -> str:
         out.append(f"引号套在词和短语上 {len(r['quotes'])} 处（引整句的 {r.get('sentence_quotes', 0)} 处不算）："
                    "人类文字里引号多半引整句，AI 多半套在词上。逐处去掉引号再读，意思不变就别加："
                    + "、".join(r["quotes"][:12]))
+    if len(r.get("openers", [])) >= 2:
+        out.append(f"段首第一句很短的段落 {len(r['openers'])} 个（不拦，逐处看）：这一句是结论、判断或报幕的，"
+                   "改成从具体的人、物、时间、数字写起，判断放到后面；写的是事实就留着："
+                   + "｜".join(r["openers"][:8]))
     st = r.get("stacked")
     if st:
         state = "" if st["passed"] else "  ← 未通过：套路叠在一起，读者一眼就能看出来"
