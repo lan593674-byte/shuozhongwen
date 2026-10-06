@@ -48,8 +48,33 @@ def rubric(name: str) -> str:
     return text.strip()
 
 
+def _read_reply(r) -> str:
+    """The answer text of a chat completion, streamed (server-sent events) or not.
+    Reasoning tokens (reasoning_content) are skipped: only the answer counts."""
+    if "event-stream" not in (r.headers.get("Content-Type") or ""):
+        d = json.load(r)
+        return (d.get("choices") or [{}])[0].get("message", {}).get("content") or ""
+    parts = []
+    for raw in r:
+        line = raw.decode("utf-8", "replace").strip()
+        if not line.startswith("data:"):
+            continue
+        data = line[5:].strip()
+        if data == "[DONE]":
+            break
+        try:
+            choice = (json.loads(data).get("choices") or [{}])[0]
+        except json.JSONDecodeError:
+            continue
+        parts.append((choice.get("delta") or {}).get("content") or "")
+    return "".join(parts)
+
+
 def chat(system: str, user: str, model: str, base: str, key: str | None, timeout: int = 900) -> str:
-    body = {"model": model, "temperature": 0.2,
+    # Streamed, with no token cap: reasoning models think for minutes before the
+    # first answer token, and a silent connection that long gets dropped on the way
+    # (RemoteDisconnected); a stream keeps bytes flowing while the model thinks.
+    body = {"model": model, "temperature": 0.2, "stream": True,
             "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]}
     headers = {"Content-Type": "application/json"}
     if key:
@@ -58,8 +83,7 @@ def chat(system: str, user: str, model: str, base: str, key: str | None, timeout
     for attempt in range(3):
         try:
             with urllib.request.urlopen(req, timeout=timeout) as r:
-                d = json.load(r)
-            content = (d.get("choices") or [{}])[0].get("message", {}).get("content") or ""
+                content = _read_reply(r)
             if content.strip():
                 return content
         except urllib.error.HTTPError as error:
