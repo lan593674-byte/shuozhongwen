@@ -17,8 +17,6 @@ OUT = HERE / "corpus"
 
 
 def source(name: str) -> tuple[str, str]:
-    if m := re.fullmatch(r"zhihu_(\d+)", name):
-        return "zhihu", f"https://www.zhihu.com/answer/{m[1]}"
     if m := re.fullmatch(r"qidian_(\d+)_(\d+)", name):
         return "qidian", f"https://www.qidian.com/chapter/{m[1]}/{m[2]}/"
     if m := re.fullmatch(r"tieba_\w+?_(\d+)|(\d+)", name):

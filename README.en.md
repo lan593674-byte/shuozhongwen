@@ -106,11 +106,11 @@ Environment: `SHUOZHONGWEN_SCORE=0` turns the score line off, `SHUOZHONGWEN_SCOR
 
 ## About the AI-likeness score
 
-A sign-constrained logistic regression over 19 Chinese stylometric features (sentence and paragraph length variation, connective density, ellipses and exclamations, pronoun and particle density, bigram repetition, stock-phrase markers, ...). Calibrated on 339 human texts (classics, pre-2020 Zhihu and Tieba long posts, free chapters of web novels, all hand-reviewed) and 101 texts from 8 models.
+A sign-constrained logistic regression over 19 Chinese stylometric features (sentence and paragraph length variation, connective density, ellipses and exclamations, pronoun and particle density, bigram repetition, stock-phrase markers, ...). Calibrated on 62 human texts (classics, Tieba long posts, free chapters of web novels, all hand-reviewed) and 101 texts from 8 models.
 
-- The `high` threshold is fixed at 0.6 (about the human 90th percentile). Per article, 90% of the AI calibration texts reach it and 5% of human texts are misflagged; 0% of the 49 held-out human texts. (Before 2026-10-05 it was the 95th percentile, 0.789: 72% caught, 1.8% misflagged.)
-- Leave-one-model-out: 47%–81% caught per unseen model.
-- Held-out human text: 0% misflagged for colloquial forum posts, 4% for web fiction.
+- The `high` threshold is fixed at 0.6 (about the human 90th percentile). Per article, 89% of the AI calibration texts reach it and 3% of human texts are misflagged; 1 of the 49 held-out human texts.
+- Leave-one-model-out (per chunk): 57%–94% caught per unseen model.
+- Held-out human text (per chunk): 6% misflagged for colloquial forum posts, 10% for web fiction.
 
 It only says whether the statistics resemble the AI texts in the calibration set. It is not a verdict of any commercial detector and not a detector-evasion tool; inside the workflow it is only a guardrail. The human calibration corpus is included in `calibration/human/` and `calibration/test/` **for personal study and research only, no commercial use**; copyright stays with the original authors and platforms and the MIT license does not cover it (see `calibration/corpus/README.md`).
 

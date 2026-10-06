@@ -66,7 +66,7 @@ def evaluate(X, y, groups, kinds, cols, label):
         held[te] = m.predict_proba(sc.transform(Xs[te]))[:, 1]
     t = np.quantile(held[y == 0], 0.95)
     rec = (held[y == 1] >= t).mean()
-    wiki = (held[(y == 0) & (kinds == "知乎回答")] >= t).mean() if ((y == 0) & (kinds == "知乎回答")).any() else float("nan")
+    classics = (held[(y == 0) & (kinds == "经典名作")] >= t).mean() if ((y == 0) & (kinds == "经典名作")).any() else float("nan")
     lomo = []
     for m_ in sorted(set(kinds[y == 1])):
         te = kinds == m_
@@ -74,7 +74,7 @@ def evaluate(X, y, groups, kinds, cols, label):
         sc = StandardScaler().fit(Xs[tr])
         mdl = LogisticRegression(C=0.5, class_weight="balanced", max_iter=2000).fit(sc.transform(Xs[tr]), y[tr])
         lomo.append((mdl.predict_proba(sc.transform(Xs[te]))[:, 1] >= t).mean())
-    print(f"{label:<28} AUC {roc_auc_score(y, held):.3f}  recall@5% {rec:.0%}  zhihuFP {wiki:.0%}  LOMO-min {min(lomo):.0%} mean {np.mean(lomo):.0%}")
+    print(f"{label:<28} AUC {roc_auc_score(y, held):.3f}  recall@5% {rec:.0%}  classicsFP {classics:.0%}  LOMO-min {min(lomo):.0%} mean {np.mean(lomo):.0%}")
 
 
 def main():

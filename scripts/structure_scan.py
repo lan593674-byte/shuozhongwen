@@ -26,7 +26,8 @@ of the argument is fine.
 
 Blocking: short_lead, summary_flip, attribution_repeat, meta_source, and
 stacking (four or more rules of any kind over their limit). The rest are hints.
-On the 388 human calibration texts the blocking rules fail 3.1%.
+On the 111 human texts in calibration/human and calibration/test the blocking
+rules fail 2.7%.
 Dialogue (text inside quotation marks) and headings are not scanned.
 
 Usage: structure_scan.py 稿件 [--paper] [--json]   exit 0 = passed
@@ -90,13 +91,15 @@ LIMITS = {"short_lead": 0.30, "one_line_para": 1, "self_qa": 1, "summary_flip": 
           "attribution_repeat": 5, "colon_list": 2, "aphorism": 1, "callback": 0, "process_i": 0, "meta_source": 0,
           "source_mention": 0}
 # These block delivery; limits were set on the calibration corpus. The rest are
-# common in human writing too (Zhihu answers ask and answer questions, quote
-# words, use one-line paragraphs), so they are hints. Making every rule zero
-# tolerance was tried on 2026-10-05 and failed 88% of the human texts.
+# common in human writing too (web novels and Tieba posts ask and answer
+# questions, quote words and use one-line paragraphs more often than AI text
+# does), so they are hints. Zero tolerance on every rule fails 77% of the human
+# texts in calibration/human and calibration/test.
 GATES = {"short_lead", "summary_flip", "attribution_repeat", "meta_source"}
 # Templates rarely come alone. Four or more rules over their limit in one text
-# (hints included) blocks delivery: 1.3% of the 388 human texts do that, the
-# templated forum post that prompted this scan hit six.
+# (hints included) blocks delivery: none of the 111 human texts in
+# calibration/human and calibration/test do that, the templated forum post that
+# prompted this scan hit six.
 STACK_LIMIT = 3
 SHORT_LEAD_MIN = 3        # at least this many hits before the share counts
 SHORT_LEAD_MAX_HAN = 10   # a "short verdict" opener has at most this many Han characters
@@ -220,8 +223,8 @@ def scan(text: str, paper: bool = False) -> dict:
         rules.append({"rule": key, "label": label, "count": len(found), "value": value, "limit": limit,
                       "passed": ok, "gate": gate, "hits": found[:12]})
     # 能不用引号就不用. In human prose most quotation marks hold a whole sentence
-    # someone said (classics 51%, Zhihu 75%, web novels 81%); in model output most sit
-    # on a single word or label (47%; Claude 56%): “上瘾模型” “参考地图” “一点点”.
+    # someone said (classics 51%, web novels and Tieba 82%); in model output most sit
+    # on a single word or label (59%; Claude 64%): “上瘾模型” “参考地图” “一点点”.
     # Counted per piece the two overlap (people quote names and terms too), so this
     # never blocks: the word and phrase quotes are listed for the remove-the-quotes
     # test, and revisions keep the author's own quotes.
