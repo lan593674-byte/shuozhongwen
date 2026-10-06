@@ -1,0 +1,51 @@
+{
+ "calibrated": "2026-10-06",
+ "rubric": "agents/judge.md",
+ "repeats": 3,
+ "rule": "每个模型的分数线 = 该模型给同类人类文字（文学：经典名作；实用和议论：知乎高赞）每篇平均分的第 25 百分位，向下取到 0.25，限制在 3.0 到 4.0 之间；每项最低分仍是 3",
+ "default": {
+  "literary": {
+   "average": 4.0,
+   "each": 3
+  },
+  "practical": {
+   "average": 3.5,
+   "each": 3
+  }
+ },
+ "models": {
+  "deepseek-v4-pro": {
+   "literary": {
+    "average": 4.0,
+    "each": 3
+   },
+   "practical": {
+    "average": 3.0,
+    "each": 3
+   },
+   "noise_sd": 0.16
+  },
+  "glm-5.3": {
+   "literary": {
+    "average": 4.0,
+    "each": 3
+   },
+   "practical": {
+    "average": 3.0,
+    "each": 3
+   },
+   "noise_sd": 0.11
+  },
+  "kimi-k3": {
+   "literary": {
+    "average": 4.0,
+    "each": 3
+   },
+   "practical": {
+    "average": 3.0,
+    "each": 3
+   },
+   "noise_sd": 0.12
+  }
+ }
+}
