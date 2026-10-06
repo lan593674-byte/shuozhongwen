@@ -14,6 +14,10 @@ out/<version>/<topic>/. This script:
 Raw replies are cached in out/eval_cache.json; writes RESULTS.md.
 
 Usage: python calibration/writing_test/evaluate.py --models m1,m2,m3 [--repeats 3] [--versions old,new]
+         [--dir calibration/writing_test/round2] [--title 旧版（3.6.4）和新版（3.8.0）] [--limit kimi-k3=1]
+--dir is the test round (topics.json, topics/, out/, RESULTS.md; default: round 1 in
+this folder). --limit caps how many calls one judge model gets at a time (Ark answers
+429 InflightBatchsizeExceeded beyond its plan's limit).
 """
 
 from __future__ import annotations
@@ -36,10 +40,18 @@ import judge_config  # noqa: E402
 import polish_check  # noqa: E402
 import review_zh  # noqa: E402
 
-TOPICS = json.loads((HERE / "topics.json").read_text(encoding="utf-8"))
-OUT = HERE / "out"
+BASE = HERE  # the test round; main() switches it with --dir
+TOPICS = json.loads((BASE / "topics.json").read_text(encoding="utf-8"))
+OUT = BASE / "out"
 CACHE = OUT / "eval_cache.json"
 _lock = threading.Lock()
+_slots: dict[str, threading.Semaphore] = {}
+
+
+def slot(model: str) -> threading.Semaphore:
+    """Per-model cap on parallel calls (--limit); unlimited models get a large one."""
+    with _lock:
+        return _slots.setdefault(model, threading.Semaphore(1000))
 PAIR_SYSTEM = """你是一位资深中文编辑。你会收到一个写作任务和同一任务的两篇稿子 A、B。按发给真实读者的成稿标准比较两篇：
 是否完成了任务要求；内容是否具体、准确、取舍得当；语言是否自然，有没有 AI 腔、套话、模板句、给普通词乱加引号；结构和节奏好不好。
 不要因为篇幅长就偏向哪一篇。只输出一个 JSON，不要任何别的文字：
@@ -71,8 +83,9 @@ def score_job(cache, cfg, model, version, topic, stage, rep):
     info = TOPICS[topic]
     raw = ""
     try:
-        raw = judge_api.chat(judge_api.rubric("judge"), judge_api.prompt("judge", t, info["genre"], task=info["task"]),
-                             model, cfg["base"], cfg["key"], cfg["timeout"])
+        with slot(model):
+            raw = judge_api.chat(judge_api.rubric("judge"), judge_api.prompt("judge", t, info["genre"], task=info["task"]),
+                                 model, cfg["base"], cfg["key"], cfg["timeout"])
         r = review_zh.check_review(t, review_zh.load_json(raw), info["genre"], model=model)
         val = {"average": r["average"], "valid": r["valid"], "passed": r["passed"], "dims": r["dims"],
                "flat": r["flat"], "off_task": r["off_task"], "templates": [x.get("type") for x in r["templates"]],
@@ -92,7 +105,9 @@ def pair_job(cache, cfg, model, topic, stage, order, a_ver, b_ver):
     first, second = (ta, tb) if order == "AB" else (tb, ta)
     user = f"任务：{TOPICS[topic]['task']}\n\n稿子 A：\n<<<\n{first}\n>>>\n\n稿子 B：\n<<<\n{second}\n>>>"
     try:
-        d = review_zh.load_json(judge_api.chat(PAIR_SYSTEM, user, model, cfg["base"], cfg["key"], cfg["timeout"]))
+        with slot(model):
+            raw = judge_api.chat(PAIR_SYSTEM, user, model, cfg["base"], cfg["key"], cfg["timeout"])
+        d = review_zh.load_json(raw)
         pick = str(d.get("better", "")).strip().upper()[:1]
         if pick not in ("A", "B"):
             raise ValueError(f"bad answer {d.get('better')!r}")
@@ -107,7 +122,7 @@ NUM = re.compile(r"\d+(?:\.\d+)?")
 
 
 def stray_numbers(topic: str, text: str) -> list[str]:
-    mat = HERE / "topics" / topic / "material.md"
+    mat = BASE / "topics" / topic / "material.md"
     if not mat.exists():
         return []
     have = set(NUM.findall(mat.read_text(encoding="utf-8")))
@@ -120,7 +135,17 @@ def main() -> int:
     p.add_argument("--repeats", type=int, default=3)
     p.add_argument("--versions", default="old,new")
     p.add_argument("--workers", type=int, default=12)
+    p.add_argument("--dir", default=str(HERE), help="测试轮次目录（topics.json、topics/、out/）")
+    p.add_argument("--title", default="旧版（3.6.4）和新版", help="报告标题里的两个版本")
+    p.add_argument("--limit", action="append", default=[], help="某个评委模型同时最多几个调用，如 kimi-k3=1")
     a = p.parse_args()
+    global BASE, TOPICS, OUT, CACHE
+    BASE = Path(a.dir).resolve()
+    TOPICS = json.loads((BASE / "topics.json").read_text(encoding="utf-8"))
+    OUT, CACHE = BASE / "out", BASE / "out" / "eval_cache.json"
+    for item in a.limit:
+        name, _, n = item.partition("=")
+        _slots[name] = threading.Semaphore(int(n))
     models = [m.strip() for m in a.models.split(",")]
     v_old, v_new = [v.strip() for v in a.versions.split(",")]
     cfg = judge_config.resolve("judge")
@@ -133,7 +158,7 @@ def main() -> int:
     with ThreadPoolExecutor(max_workers=a.workers) as ex:
         list(ex.map(lambda j: j[0](*j[1]), jobs))
 
-    lines = ["# 写作对照测试：旧版（3.6.4）和新版", ""]
+    lines = [f"# 写作对照测试：{a.title}", ""]
     lines += ["五个题目，新旧两版各自按自己的 SKILL.md 从头写：初稿（写完、任何检查和审读之前存下）和终稿（走完整个流程）。"
               f"打分用新版评分标准（`agents/judge.md`，给了文体和任务），{len(models)} 个评委模型各评 {a.repeats} 次；"
               "盲评对比把两版放在一起问哪篇更好，A、B 两种顺序各问一次。", ""]
@@ -211,10 +236,10 @@ def main() -> int:
                 txt = text_of(v, t, s)
                 if txt:
                     lines += [f"#### {'旧版' if v == v_old else '新版'}{'初稿' if s == 'draft1' else '终稿'}", "", txt, ""]
-    (HERE / "RESULTS.md").write_text("\n".join(lines), encoding="utf-8")
+    (BASE / "RESULTS.md").write_text("\n".join(lines), encoding="utf-8")
     fails = [k for k, v in cache.items() if (v.get("average") is None and k.startswith("score")) or
              (k.startswith("pair") and not v.get("winner"))]
-    print(f"wrote {HERE / 'RESULTS.md'}; failed calls: {len(fails)}")
+    print(f"wrote {BASE / 'RESULTS.md'}; failed calls: {len(fails)}")
     return 0
 
 
