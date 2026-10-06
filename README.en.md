@@ -4,7 +4,7 @@
 
 A Chinese-writing plugin for AI agents. It writes or revises a Chinese article with three goals at once: **keep the facts intact, lose the machine-translated "AI tone", and actually write well**.
 
-Stripping AI tells alone tends to leave flat, lifeless prose. This plugin changes the order: identify the genre and decide what the piece has to say before writing; then hand the draft to a **fresh judge** that must back every score with a verbatim quote from the text (a score it cannot quote is void); revise from that evidence with a new judge each round, and stop as soon as the bar is met. The statistical "AI-likeness" score is a guardrail, never a target.
+Stripping AI tells alone tends to leave flat, lifeless prose. A weak first draft is rarely a sentence-level problem either: the writer had no concrete material and no clear point, so templates and stock phrases filled the space. This plugin therefore gathers material and outlines before drafting; only after the draft is written does it scan for templates and hand the text to a **fresh judge** that must back every score with a verbatim quote from the text (a score it cannot quote is void); it revises from that evidence with a new judge each round, and stops as soon as the bar is met. The statistical "AI-likeness" score is a guardrail, never a target.
 
 Works as a full Claude Code plugin (subagents and hooks included) and as an Agent Skill for Codex, Cursor, Gemini CLI and other agents. The judge can be any model behind an OpenAI-compatible API.
 
@@ -12,15 +12,15 @@ Works as a full Claude Code plugin (subagents and hooks included) and as an Agen
 
 Type `/shuozhongwen <topic or path to draft>`:
 
-1. **Genre and standard**: practical text (reports, notices, plans) must be accurate and concise; argument must hold up; literary writing (essays, travel writing, fiction, reviews) must be good writing. The genre sets the pass bar.
-2. **Thread, insight, fact ledger**: when revising someone else's draft, numbers, names, terms and causal directions are locked; missing details are never invented, only listed as "details to ask the author for".
-3. **Write or revise** from meaning, not sentence by sentence.
-4. **Editorial review and fact check** by two fresh subagents that see only the genre, the text and the rubric. Six dimensions: concrete detail, insight, language and imagery, rhythm, structure and tension, voice.
-5. **Revise from evidence**: `review_zh.py` verifies each quote is verbatim and applies the bar. Weakest dimensions get fixed, a new judge re-reviews; at most three rounds.
-6. **Hard gate**: `polish_check.py` checks invisible characters, four mechanical scans and the AI-likeness score.
-7. **Deliver** the text with a short revision report.
+1. **Genre and standard**: practical text (reports, notices, plans) must be accurate and concise; argument must hold up; literary writing (essays, travel writing, fiction, reviews) must be good writing. The genre follows what the task asks for and sets the pass bar.
+2. **Prepare before writing**: restate the task (reader, what to cover, length); gather material: when revising or writing from your material, a data ledger first (numbers, names, terms, citations, causal directions), used verbatim; with only a topic, research first; for pieces that rest on your own experience (travel writing, memoir) it asks you three to five concrete questions instead of inventing. Then one sentence on what the reader should come away with, and a one-line-per-paragraph outline.
+3. **Draft** from the outline: one thing per paragraph, facts and details first, judgement after them, straight into the subject. Attention goes to content; template checks come after the draft.
+4. **Self-check**: `polish_check.py` (invisible characters, four mechanical scans, structural templates, AI-likeness), then reread against the outline and the data ledger.
+5. **Editorial review and fact check** by two fresh judges that see only the genre, the task, the text and the rubric. Six dimensions: concrete detail, insight (selection, for expository text), language and imagery, rhythm, structure and tension, voice; plus whether the text is off task.
+6. **Revise from evidence**: `review_zh.py` verifies each quote is verbatim and applies the bar. The weak paragraph is rewritten from the outline; missing material is asked for or researched, never faked with manufactured verdicts, aphorisms or rhetorical questions. A new judge re-reviews; at most three rounds.
+7. **Deliver** the text, then a line `【修改报告】` and the revision report.
 
-Pass bar: literary genres average ≥ 4 with every dimension ≥ 3; practical and argument texts average ≥ 3.5 with every dimension ≥ 3; not flat; zero doubtful facts.
+Pass bar: literary genres average ≥ 4 with every dimension ≥ 3; practical and argument texts average ≥ 3.5 with every dimension ≥ 3; not flat; not off task; at most one AI template the judge can quote (strings of short verdict openers, announcing sentences, wrap-up formulas, scare quotes, invented first-person experience, preambles about sources). Rhetorical questions, one-line paragraphs and callbacks are common in human prose and are only flagged, never blocking (see `calibration/TEMPLATE_AUDIT.md`). Zero doubtful facts for a piece written from a bare topic.
 
 ### Data fidelity (enforced when revising a draft or writing from your material)
 
@@ -100,7 +100,7 @@ Keys can come from an environment variable (`--key-env`), a .env file (`--key-fi
 Both hooks only check; they never modify a file or a reply.
 
 - **After a file write** (PostToolUse): checks the file Claude just wrote for invisible characters, garbled text and provenance metadata, and records the result (no pop-up).
-- **Before a reply is shown** (MessageDisplay): every reply, however short, ends with a check line: invisible characters or garbled text in the reply and in files written meanwhile. Replies of 250+ characters also get an AI-likeness line above it (the statistics are unreliable on shorter text). Display only; the transcript is untouched.
+- **Before a reply is shown** (MessageDisplay): every reply, however short, ends with a check line: invisible characters or garbled text in the reply and in files written meanwhile. Replies of 250+ characters also get an AI-likeness line above it (the statistics are unreliable on shorter text); for a delivery only the article before `【修改报告】` is scored, because the report's lists alone push any article into the high tier. Display only; the transcript is untouched.
 
 Environment: `SHUOZHONGWEN_SCORE=0` turns the score line off, `SHUOZHONGWEN_SCORE_MIN` sets the minimum length, `SHUOZHONGWEN_CHECK=0` turns the check line off, `SHUOZHONGWEN_LOG_DIR` sets the log folder (counts and scores only, never reply text).
 
