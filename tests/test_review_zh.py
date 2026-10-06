@@ -78,6 +78,27 @@ def test_off_task_fails_with_the_judges_note():
     assert review_zh.check_review(TEXT, s, "游记散文")["passed"]
 
 
+def test_length_only_off_task_is_a_reminder_when_the_material_is_short():
+    s = review(5)
+    s["off_task"], s["off_task_kind"], s["task_note"] = True, "篇幅", "要一千字，正文三百多字"
+    r = review_zh.check_review(TEXT, s, "散文")
+    assert not r["passed"] and "--short-material" in review_zh.report(r, None)
+    r = review_zh.check_review(TEXT, s, "散文", short_material=True)
+    assert r["passed"] and r["length_only"] and "篇幅提醒" in review_zh.report(r, None)
+    s["off_task_kind"] = "内容"  # really off task: the flag does not help
+    assert not review_zh.check_review(TEXT, s, "散文", short_material=True)["passed"]
+
+
+def test_compare_needs_the_new_draft_to_win_both_orders():
+    a, b = {"better": "A", "margin": "明显"}, {"better": "B", "margin": "略微"}
+    # first reply has the original as A, second has the new draft as A
+    assert review_zh.check_compare(b, a)["replace"]
+    c = review_zh.check_compare(a, a)  # A both times: position, not quality
+    assert not c["replace"] and [v["winner"] for v in c["votes"]] == ["base", "new"]
+    assert not review_zh.check_compare(b, {"better": "都好"})["replace"]
+    assert "交原稿" in review_zh.compare_report(c)
+
+
 def test_facts_doubt_blocks_own_draft_rhetoric_does_not():
     ok = {"claims": [{"text": "拆了两千年", "verdict": "rhetoric"}, {"text": "一三四九年的地震", "verdict": "ok"}]}
     bad = {"claims": [{"text": "一三四九年的地震", "verdict": "doubt", "note": "x"}]}

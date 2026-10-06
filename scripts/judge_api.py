@@ -13,7 +13,8 @@ environment variables SHUOZHONGWEN_API_BASE / _MODEL / _API_KEY override it).
 The same calls are offered to Claude Code as MCP tools by judge_mcp.py.
 
 Usage:
-  judge_api.py 稿件 --genre 城市随笔散文 [--task 题目原话] [--model M] [--no-facts] [--own] [--out-dir 目录] [--json]
+  judge_api.py 稿件 --genre 城市随笔散文 [--task 题目原话] [--model M] [--no-facts] [--own] [--short-material] [--out-dir 目录] [--json]
+  judge_api.py 新稿 --compare 原稿 --genre 短篇小说 [--task 题目原话]   (精修：对比评委，两种顺序各问一次)
   judge_api.py 改稿 --genre 课程设计报告 --paper --original 原稿   (/shuozhongwen lunwen)
 Exit code 0 = passed.
 """
@@ -109,6 +110,9 @@ def prompt(role: str, text: str, genre: str = "", original: str = "", task: str 
         return f"正文：\n<<<\n{text}\n>>>"
     if role == "rigor":
         return f"原稿：\n<<<\n{original}\n>>>\n\n改稿：\n<<<\n{text}\n>>>"
+    if role == "compare":  # text is A, original is B
+        head = f"文体：{genre}\n\n" + (f"任务：{task}\n\n" if task else "")
+        return f"{head}稿子 A：\n<<<\n{text}\n>>>\n\n稿子 B：\n<<<\n{original}\n>>>"
     raise ValueError(role)
 
 
@@ -122,6 +126,16 @@ def call_role(role: str, text: str, genre: str = "", original: str = "", model: 
                             r["timeout"])
 
 
+def compare(new: str, base: str, genre: str, task: str = "", model: str | None = None) -> tuple[str, dict, list[str]]:
+    """精修: the compare judge, asked twice in parallel (original as A, then the
+    polished draft as A). Returns (model, check_compare result, the two raw replies)."""
+    with ThreadPoolExecutor(max_workers=2) as ex:
+        first = ex.submit(call_role, "compare", base, genre, new, model, task)
+        second = ex.submit(call_role, "compare", new, genre, base, model, task)
+        (used, raw1), (_, raw2) = first.result(), second.result()
+    return used, review_zh.check_compare(review_zh.load_json(raw1), review_zh.load_json(raw2)), [raw1, raw2]
+
+
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("path", help="稿件文件")
@@ -132,10 +146,12 @@ def main() -> int:
     p.add_argument("--own", action="store_true", help="只给题目、没有材料的稿子：事实存疑要改到 0；不加则存疑只列给作者")
     p.add_argument("--paper", action="store_true", help="论文模式：用 lunwen-judge 审语言")
     p.add_argument("--original", help="论文模式：原稿文件，给了就同时跑严谨性审查（agents/rigor.md）")
+    p.add_argument("--short-material", action="store_true", help="素材撑不起任务要的篇幅、修改报告已写明：评委只因篇幅判偏题时只提示，不拦")
+    p.add_argument("--compare", metavar="原稿", help="精修：把这份原稿和稿件（新稿）交给对比评委，两种顺序各问一次；两次都判新稿更好才换")
     p.add_argument("--out-dir", help="审读和核查 JSON 的保存目录，默认与稿件同目录")
     p.add_argument("--json", action="store_true")
     a = p.parse_args()
-    judge_role = "lunwen-judge" if a.paper else "judge"
+    judge_role = "compare" if a.compare else "lunwen-judge" if a.paper else "judge"
     ok, why = judge_config.ready(judge_role) if not a.model else (True, "")
     if not ok:
         p.error(why)
@@ -146,6 +162,17 @@ def main() -> int:
     facts_on = not a.no_facts and not a.paper
     out = Path(a.out_dir) if a.out_dir else src.parent
     out.mkdir(parents=True, exist_ok=True)
+
+    if a.compare:
+        model, c, raws = compare(text, read_any(a.compare).strip(), a.genre, a.task, a.model)
+        for i, raw in enumerate(raws, 1):
+            (out / f"{src.stem}.compare{i}.json").write_text(raw, encoding="utf-8")
+        if a.json:
+            print(json.dumps({"model": model, "compare": c}, ensure_ascii=False, indent=1))
+        else:
+            print(f"评委模型：{model}")
+            print(review_zh.compare_report(c))
+        return 0 if c["replace"] else 1
 
     with ThreadPoolExecutor(max_workers=3) as ex:
         jr = ex.submit(call_role, judge_role, text, a.genre, "", a.model, a.task)
@@ -161,7 +188,8 @@ def main() -> int:
     if rigor_raw is not None:
         (out / f"{src.stem}.rigor.json").write_text(rigor_raw, encoding="utf-8")
 
-    r = review_zh.check_review(text, review_zh.load_json(review_raw), a.genre, paper=a.paper, model=model)
+    r = review_zh.check_review(text, review_zh.load_json(review_raw), a.genre, paper=a.paper, model=model,
+                               short_material=a.short_material)
     f = review_zh.check_facts(text, review_zh.load_json(facts_raw), own=a.own) if facts_raw is not None else None
     g = review_zh.check_rigor(original, text, review_zh.load_json(rigor_raw)) if rigor_raw is not None else None
     if a.json:

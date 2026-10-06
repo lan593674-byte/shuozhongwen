@@ -29,8 +29,9 @@ def _serve(replies):
             body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
             seen.append(body)
             user = body["messages"][-1]["content"]
-            key = "judge" if user.startswith("文体：") else "rigor" if user.startswith("原稿：") else "facts"
-            content = replies[key]
+            key = ("compare" if "稿子 A：" in user else "judge" if user.startswith("文体：")
+                   else "rigor" if user.startswith("原稿：") else "facts")
+            content = replies[key](user) if callable(replies[key]) else replies[key]
             out = json.dumps({"choices": [{"message": {"content": content}}]}).encode()
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
@@ -132,7 +133,8 @@ def test_mcp_server_lists_tools_and_judges_through_the_configured_model(tmp_path
     finally:
         srv.shutdown()
     out = {d["id"]: d for d in map(json.loads, p.stdout.splitlines())}
-    assert {t["name"] for t in out[2]["result"]["tools"]} == {"judge", "factcheck", "lunwen_judge", "rigor", "judge_status"}
+    assert {t["name"] for t in out[2]["result"]["tools"]} == {"judge", "factcheck", "lunwen_judge", "rigor", "compare",
+                                                             "judge_status"}
     text = out[3]["result"]["content"][0]["text"]
     assert "评委模型：mock" in text and "结论：通过" in text
     assert len(seen) == 1 and len(seen[0]["messages"]) == 2  # one fresh request, rubric + text only
@@ -233,3 +235,49 @@ def test_chat_backs_off_on_a_rate_limit(monkeypatch):
     finally:
         srv.shutdown()
     assert calls["n"] == 3 and waits == [30, 60]
+
+
+def test_compare_prompt_puts_text_in_a_and_original_in_b():
+    p = judge_api.prompt("compare", "甲稿正文", "短篇小说", "乙稿正文", task="写末班公交车")
+    assert p.startswith("文体：短篇小说\n\n任务：写末班公交车\n\n稿子 A：")
+    assert p.index("甲稿正文") < p.index("稿子 B：") < p.index("乙稿正文")
+    assert "verdict" not in judge_api.rubric("compare") and "better" in judge_api.rubric("compare")
+
+
+def _cli_compare(tmp_path, picks_new: bool):
+    new, base = tmp_path / "新稿.txt", tmp_path / "原稿.txt"
+    new.write_text("新稿：司机把电池放在后门边，一路看着后视镜。", encoding="utf-8")
+    base.write_text("原稿：司机让他上了车，心里有些不安。", encoding="utf-8")
+
+    def pick(user):
+        a = user.split("稿子 A：", 1)[1].split("稿子 B：", 1)[0]
+        new_is_a = "新稿：" in a
+        better = ("A" if new_is_a else "B") if picks_new else ("B" if new_is_a else "A")
+        return json.dumps({"better": better, "margin": "略微", "reason": "细节更实"}, ensure_ascii=False)
+
+    srv, seen = _serve({"compare": pick})
+    try:
+        env = {**__import__("os").environ, "SHUOZHONGWEN_API_BASE": f"http://127.0.0.1:{srv.server_port}/v1",
+               "SHUOZHONGWEN_API_KEY": "", "OPENAI_API_KEY": "", "PYTHONUTF8": "1",
+               "SHUOZHONGWEN_JUDGE_CONFIG": str(tmp_path / "none.json")}
+        r = subprocess.run([sys.executable, str(SCRIPT), str(new), "--compare", str(base), "--genre", "短篇小说",
+                            "--task", "写末班公交车", "--model", "mock", "--json"],
+                           capture_output=True, text=True, encoding="utf-8", env=env, timeout=60)
+    finally:
+        srv.shutdown()
+    return r, seen
+
+
+def test_compare_replaces_only_when_the_new_draft_wins_both_orders(tmp_path):
+    r, seen = _cli_compare(tmp_path, picks_new=True)
+    assert r.returncode == 0, r.stdout + r.stderr
+    c = json.loads(r.stdout)["compare"]
+    assert c["replace"] and [v["winner"] for v in c["votes"]] == ["new", "new"]
+    # two fresh requests, one per order, each with the compare rubric and both drafts only
+    assert len(seen) == 2 and all(len(b["messages"]) == 2 for b in seen)
+    firsts = sorted(b["messages"][1]["content"].split("稿子 A：", 1)[1][:8] for b in seen)
+    assert any("新稿" in f for f in firsts) and any("原稿" in f for f in firsts)
+    assert (tmp_path / "新稿.compare1.json").exists() and (tmp_path / "新稿.compare2.json").exists()
+
+    r, _ = _cli_compare(tmp_path, picks_new=False)
+    assert r.returncode == 1 and not json.loads(r.stdout)["compare"]["replace"]

@@ -37,7 +37,7 @@ import os
 import sys
 from pathlib import Path
 
-ROLES = ("judge", "factcheck", "lunwen-judge", "rigor")
+ROLES = ("judge", "factcheck", "lunwen-judge", "rigor", "compare")
 DEFAULT_TIMEOUT = 900
 
 
