@@ -1,0 +1,146 @@
+{
+ "score|deepseek-v4-pro|old|T3|draft1|1": {
+  "average": 4.83,
+  "valid": true,
+  "passed": true,
+  "dims": {
+   "concrete": 5,
+   "insight": 4,
+   "language": 5,
+   "rhythm": 5,
+   "structure": 5,
+   "voice": 5
+  },
+  "flat": false,
+  "off_task": false,
+  "templates": [],
+  "devices": [],
+  "summary": "观察具体、判断清楚、结尾留白，是一篇有现场感且不落套路的知乎回答。"
+ },
+ "score|deepseek-v4-pro|old|T3|final|2": {
+  "average": 4.0,
+  "valid": true,
+  "passed": true,
+  "dims": {
+   "concrete": 4,
+   "insight": 4,
+   "language": 4,
+   "rhythm": 4,
+   "structure": 4,
+   "voice": 4
+  },
+  "flat": false,
+  "off_task": false,
+  "templates": [],
+  "devices": [],
+  "summary": "一篇有观察、有数据、收尾有场景的知乎体回答，清楚回应了问题；缺点是中段略偏并列，深度和语言还可以再进一步。"
+ },
+ "score|deepseek-v4-pro|old|T4|draft1|0": {
+  "average": 3.5,
+  "valid": true,
+  "passed": false,
+  "dims": {
+   "concrete": 4,
+   "insight": 3,
+   "language": 4,
+   "rhythm": 3,
+   "structure": 3,
+   "voice": 4
+  },
+  "flat": false,
+  "off_task": true,
+  "templates": [],
+  "devices": [],
+  "summary": "细节具体、语气克制，但篇幅远不足千字，像从笔记直接剪出的片段而非完整散文。"
+ },
+ "score|deepseek-v4-pro|old|T4|draft1|1": {
+  "average": 3.0,
+  "valid": true,
+  "passed": false,
+  "dims": {
+   "concrete": 4,
+   "insight": 3,
+   "language": 4,
+   "rhythm": 2,
+   "structure": 2,
+   "voice": 3
+  },
+  "flat": false,
+  "off_task": true,
+  "templates": [],
+  "devices": [],
+  "summary": "细节具体、口吻克制，但篇幅远不足要求，整体仍是笔记式罗列，缺少散文的展开和推进。"
+ },
+ "score|deepseek-v4-pro|old|T3|final|0": {
+  "average": 4.0,
+  "valid": true,
+  "passed": true,
+  "dims": {
+   "concrete": 4,
+   "insight": 4,
+   "language": 4,
+   "rhythm": 4,
+   "structure": 4,
+   "voice": 4
+  },
+  "flat": false,
+  "off_task": false,
+  "templates": [],
+  "devices": [],
+  "summary": "用具体场景和数据回答得清楚、结尾轻巧，但中段原因略并列，缺一个更核心的判断把全文拧紧。"
+ },
+ "score|deepseek-v4-pro|old|T2|draft1|0": {
+  "average": 5.0,
+  "valid": true,
+  "passed": true,
+  "dims": {
+   "concrete": 5,
+   "insight": 5,
+   "language": 5,
+   "rhythm": 5,
+   "structure": 5,
+   "voice": 5
+  },
+  "flat": false,
+  "off_task": false,
+  "templates": [],
+  "devices": [],
+  "summary": "一篇细节扎实、结尾留白有余味的出色微型小说，用末班车和一块电瓶写出规则与人情的灰色地带。"
+ },
+ "score|deepseek-v4-pro|old|T2|final|0": {
+  "average": 5.0,
+  "valid": true,
+  "passed": true,
+  "dims": {
+   "concrete": 5,
+   "insight": 5,
+   "language": 5,
+   "rhythm": 5,
+   "structure": 5,
+   "voice": 5
+  },
+  "flat": false,
+  "off_task": false,
+  "templates": [],
+  "devices": [],
+  "summary": "一篇细节扎实、节奏克制的短篇，用逢站必停的末班车和一个不能上车的电瓶，写出规则与人情之间极淡却极重的夜晚。"
+ },
+ "score|deepseek-v4-pro|old|T3|final|1": {
+  "average": 4.17,
+  "valid": true,
+  "passed": true,
+  "dims": {
+   "concrete": 4,
+   "insight": 4,
+   "language": 5,
+   "rhythm": 4,
+   "structure": 4,
+   "voice": 4
+  },
+  "flat": false,
+  "off_task": false,
+  "templates": [],
+  "devices": [],
+  "summary": "这是一篇有观察、有具体数字与场景的知乎回答，语言自然有画面，中段举例略平但整体清楚可读。"
+ }
+}
