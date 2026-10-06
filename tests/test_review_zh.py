@@ -133,3 +133,9 @@ def test_calibrated_judge_model_uses_its_own_line(tmp_path, monkeypatch):
     assert r["passed"] and r["gate"]["source"] == "Strict-Model 的校准分数线"
     assert review_zh.check_review(TEXT, s, "周报", model="other-model")["gate"]["average"] == 3.5
     assert "校准分数线" in review_zh.report(r, None)
+
+
+def test_load_json_repairs_unescaped_quotes_inside_strings():
+    raw = '{"scores": {"concrete": {"score": 4, "evidence": "他说"好"就走了，没有回头", "fix": "x"}}, "flat": false}'
+    d = review_zh.load_json(raw)
+    assert d["scores"]["concrete"]["evidence"] == '他说"好"就走了，没有回头' and d["flat"] is False
