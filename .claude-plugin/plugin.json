@@ -2,8 +2,8 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "shuozhongwen",
   "displayName": "Shuo Zhongwen",
-  "version": "3.8.0",
-  "description": "说中文：/shuozhongwen 中文写作流程（认文体、备料列提纲、写初稿、自查、全新评委审读与事实核查、按证据改到过线），/shuozhongwen lunwen 论文特化（只改语言、学术严谨性审查），/shuozhongwen qingli 清除零宽字符和乱码；改稿和根据材料新写时数据保真约束；外部模型评委（MCP，可换任意 OpenAI 兼容接口）；结构套路扫描；钩子只检查，在回复末尾报告 AI 相似度和零宽字符、乱码检测结果。",
+  "version": "4.0.0",
+  "description": "说中文：以 research-writing-skill 写作内容重构，保留 shuozhongwen、qingli、lunwen 三个主命令；整合论文规划、证据与文献、章节和学科写作、翻译改稿、自审与 LaTeX，保留独立评审打分、按证据改写、AI 相似度与数据保真；清理和只检查钩子沿用。",
   "author": {
     "name": "lan593674-byte",
     "url": "https://github.com/lan593674-byte"

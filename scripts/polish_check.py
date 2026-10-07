@@ -3,13 +3,12 @@
 
 Runs, in this order, and reports all of them:
 1. invisible Unicode carriers (text_unicode, report only)
-2. the skill's four zero-tolerance scans (haohao_scan)
-   and the structural template scan (structure_scan: short verdict openers,
-   summary formulas, one source cited over and over; three more as hints)
+2. formatting checks and contextual language observations (haohao_scan),
+   plus structural observations (structure_scan; never independent writing gates)
 3. the Chinese stylometry gauge (score_zh): tier, where the score sits among
    human text, and (only when the tier is high) what to fix
 
-The draft passes when: no invisible carriers, every scan passes, and the
+The draft passes when: no invisible carriers, formatting passes, and the
 stylometry tier is not "high". Scoring lower than typical human text is not a
 goal; writing quality is checked separately by review_zh.py. Exit code 0 = pass.
 The rewriting itself is done by a person or by Claude following
@@ -77,10 +76,11 @@ def main() -> int:
         if rule.get("skipped"):
             print(f"{rule['label']}：不扫（{rule['skipped']}）")
             continue
-        print(f"{rule['label']}：{rule['count']} 处（上限 {rule['limit']}）{'' if rule['passed'] else '  ← 未通过'}")
+        note = "格式检查" if rule["gate"] else "提示，交内容评审判断"
+        print(f"{rule['label']}：{rule['count']} 处（{note}）{'' if rule['passed'] else '  ← 未通过'}")
         for h in rule["hits"][:5]:
             print(f"    第 {h['line']} 行：{h['text']}")
-    print("结构套路：")
+    print("结构信号（仅提示，正常学术结构不按形式判退）：")
     for line in structure_scan.report(r["structure"]).splitlines():
         print("  " + line)
     s = r["style"]
@@ -89,7 +89,7 @@ def main() -> int:
     else:
         pct = s.get("human_percentile")
         where = f"比 {pct}% 的人类段落更像 AI" if pct is not None else ""
-        print(f"AI 相似度：{s['score']:.2f}（{s['tier']}，{where}）")
+        print(f"AI 相似度：{s['score']:.2f}（{s['tier']}，{where}；统计信号，不是第三方检测器 AI 率）")
         if s["tier"] == "high":
             for f in s["findings"]:
                 print(f"    待改：{f}")
