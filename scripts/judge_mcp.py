@@ -60,9 +60,9 @@ TOOLS = [
      "inputSchema": {"type": "object", "properties": {**TEXT_PROPS, "own": {"type": "boolean", "description": "只给题目、没有材料的稿子设为 true：存疑要改到 0"}}}},
     {"name": "lunwen_judge", "description": "用外部模型做 /shuozhongwen lunwen 的论文语言审读。",
      "inputSchema": {"type": "object", "properties": {"genre": {"type": "string"}, **TEXT_PROPS}, "required": ["genre"]}},
-    {"name": "rigor", "description": "用外部模型做 /shuozhongwen lunwen 的学术严谨性审查：对照原稿或材料找退步，新写时审查当前稿并单列研究问题。",
+    {"name": "rigor", "description": "用外部模型做 /shuozhongwen lunwen 的学术严谨性审查：对照原稿和改稿找退步，列出原稿本身的问题。",
      "inputSchema": {"type": "object", "properties": {
-         "original": {"type": "string", "description": "原稿或研究材料全文；新写稿件可留空"}, "original_path": {"type": "string", "description": "原稿或研究材料文件路径"},
+         "original": {"type": "string", "description": "原稿全文"}, "original_path": {"type": "string", "description": "原稿文件路径"},
          **TEXT_PROPS}}},
     {"name": "judge_status", "description": "查看外部评委的配置：接口、各角色用的模型、密钥是否找到（不显示密钥）、配置文件位置。",
      "inputSchema": {"type": "object", "properties": {}}},
@@ -94,8 +94,7 @@ def run_tool(name: str, args: dict) -> str:
         raise RuntimeError(why)
     text = _text(args)
     genre = str(args.get("genre", ""))
-    original = (_text(args, "original", "original_path")
-                if role == "rigor" and (args.get("original") or args.get("original_path")) else "")
+    original = _text(args, "original", "original_path") if role == "rigor" else ""
     model, raw = judge_api.call_role(role, text, genre, original, task=str(args.get("task", "") or ""))
     data = review_zh.load_json(raw)
     if role in ("judge", "lunwen-judge"):
@@ -108,10 +107,8 @@ def run_tool(name: str, args: dict) -> str:
             f"\n  存疑：{c.get('text')} —— {c.get('note')}" for c in f["doubts"])
     else:
         g = review_zh.check_rigor(original, text, data)
-        scope = "新稿问题" if g["new_draft"] else "原稿或材料问题"
-        comparison = "新稿无原稿比对" if g["new_draft"] else f"退步 {len(g['regressions'])} 处"
-        report = (f"学术严谨性：{comparison}，{scope} {len(g['issues'])} 条"
-                  + (f"；审查无效：{g['void']} 条证据不属于对应全文，需全新评委重审" if g["void"] else "")
+        report = (f"学术严谨性：退步 {len(g['regressions'])} 处，原稿问题 {len(g['issues'])} 条"
+                  + (f"，{g['void']} 条引不出原文已作废" if g["void"] else "")
                   + ("\n结论：通过" if g["passed"] else "\n结论：未通过"))
     return f"评委模型：{model}\n{report}\n\n原始 JSON（原样存成文件，交给 review_zh.py 时用）：\n{json.dumps(data, ensure_ascii=False)}"
 

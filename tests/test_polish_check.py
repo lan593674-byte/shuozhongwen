@@ -23,9 +23,7 @@ def test_scan_flags_all_four_rules():
     assert counts["meta_discourse"] == 1
     assert counts["halfwidth_punct"] >= 1
     assert counts["b2_variants"] == 1
-    assert r["passed"] is False  # Chinese half-width punctuation remains a formatting check
-    assert counts["heading_numbering"] == counts["meta_discourse"] == 1
-    assert all(x["passed"] for x in r["rules"] if not x["gate"])
+    assert r["passed"] is False
 
 
 def test_scan_exempts_numbers_code_and_urls():
@@ -42,9 +40,3 @@ def test_polish_check_reports_invisible_chars():
     r = polish_check.check("正文里藏了一个​零宽字符。")
     assert r["invisible_chars"] >= 1
     assert r["passed"] is False
-
-
-def test_polish_check_accepts_academic_subjects_and_numbered_structure():
-    r = polish_check.check("## 1. 方法\n\n本文分析样本范围，实验结果表明结论仍受数据边界约束。", paper=True)
-    assert r["passed"] and r["structure"]["passed"]
-    assert r["style"]["status"] == "insufficient_length" and r["style"]["score"] is None

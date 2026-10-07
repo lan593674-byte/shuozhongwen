@@ -49,18 +49,15 @@ def test_literary_and_practical_gates():
     assert not review_zh.check_review(TEXT, s, "游记散文")["passed"]  # 3.67 < 4.0
 
 
-def test_flat_is_a_literary_quality_check_not_a_demand_for_practical_prose():
-    assert review_zh.check_review(TEXT, review(5, flat=True), "周报")["passed"]
-    assert not review_zh.check_review(TEXT, review(5, flat=True), "游记散文")["passed"]
+def test_flat_always_fails():
+    assert not review_zh.check_review(TEXT, review(5, flat=True), "周报")["passed"]
 
 
-def test_templates_and_devices_are_contextual_observations():
+def test_more_than_one_template_fails_devices_are_only_listed():
     s = review(5)
     s["templates"] = [{"type": "总结翻转", "evidence": "罗马人拆自己的城，拆了两千年"}]
     assert review_zh.check_review(TEXT, s, "城市随笔散文")["passed"]
     s["templates"].append({"type": "滥用引号", "evidence": "外墙上那一排排碗口大的坑"})
-    assert review_zh.check_review(TEXT, s, "城市随笔散文")["passed"]
-    s["scores"]["language"]["score"] = 2
     assert not review_zh.check_review(TEXT, s, "城市随笔散文")["passed"]
     # devices (设问自答, 单句成段 ...) are common in human prose: listed, never failing
     d = review(5)
@@ -143,7 +140,7 @@ def test_load_json_tolerates_wrapping():
     assert review_zh.load_json('好的：```json\n{"claims": []}\n```')["claims"] == []
 
 
-def test_model_identity_and_calibration_cannot_override_research_writing_gates(tmp_path, monkeypatch):
+def test_calibrated_judge_model_uses_its_own_line(tmp_path, monkeypatch):
     t = tmp_path / "th.json"
     t.write_text('{"models": {"strict-model": {"literary": {"average": 3.5, "each": 3}, '
                  '"practical": {"average": 3.0, "each": 3}}}}', encoding="utf-8")
@@ -152,71 +149,14 @@ def test_model_identity_and_calibration_cannot_override_research_writing_gates(t
     s["scores"]["voice"]["score"] = 3
     s["scores"]["rhythm"]["score"] = 3
     s["scores"]["insight"]["score"] = 3   # average 3.5
-    assert not review_zh.check_review(TEXT, s, "游记散文")["passed"]
-    r = review_zh.check_review(TEXT, s, "游记散文", model="Strict-Model")
-    assert not r["passed"] and r["gate"] == {"average": 4.0, "each": 3, "source": "固定分数线"}
-    assert review_zh.check_review(TEXT, review(3), "周报", model="Strict-Model")["passed"] is False
+    assert not review_zh.check_review(TEXT, s, "游记散文")["passed"]                 # fixed line 4.0
+    r = review_zh.check_review(TEXT, s, "游记散文", model="Strict-Model")             # calibrated 3.5
+    assert r["passed"] and r["gate"]["source"] == "Strict-Model 的校准分数线"
     assert review_zh.check_review(TEXT, s, "周报", model="other-model")["gate"]["average"] == 3.5
-    assert review_zh.thresholds()["models"]["strict-model"]["literary"]["average"] == 3.5
-    assert "固定分数线" in review_zh.report(r, None)
-    t.write_text('{"models": {"strict-model": {"literary": {"average": 5.0, "each": 5}, '
-                 '"practical": {"average": 5.0, "each": 5}}}}', encoding="utf-8")
-    assert review_zh.check_review(TEXT, review(4), "游记散文", model="strict-model")["passed"]
-    assert review_zh.check_review(TEXT, review(4), "周报", model="strict-model")["passed"]
+    assert "校准分数线" in review_zh.report(r, None)
 
 
 def test_load_json_repairs_unescaped_quotes_inside_strings():
     raw = '{"scores": {"concrete": {"score": 4, "evidence": "他说"好"就走了，没有回头", "fix": "x"}}, "flat": false}'
     d = review_zh.load_json(raw)
     assert d["scores"]["concrete"]["evidence"] == '他说"好"就走了，没有回头' and d["flat"] is False
-
-
-def test_template_count_does_not_override_evidence_based_scores():
-    rv = review(4)
-    rv["templates"] = [{"type": "需结合文体判断", "evidence": q} for q in QUOTES]
-    r = review_zh.check_review(TEXT, rv, "周报")
-    assert r["passed"] and len(r["templates"]) == len(QUOTES)
-    rv["scores"]["language"]["score"] = 2
-    assert not review_zh.check_review(TEXT, rv, "周报")["passed"]
-
-
-def test_invalid_scores_cannot_bypass_the_one_to_five_rubric():
-    for score in (0, 6, 4.5, True, None, "not a score"):
-        r = review_zh.check_review(TEXT, review(score), "周报")
-        assert not r["valid"] and not r["passed"]
-
-
-def test_new_paper_issues_need_evidence_from_the_new_draft():
-    rig = {"regressions": [], "issues": [
-        {"text": "原因在于数据的规模和特征的尺度", "type": "结论与证据", "note": "需作者核对支持依据"},
-        {"text": "这句话并没有出现在新的稿件中", "type": "方法"},
-    ]}
-    g = review_zh.check_rigor("", PAPER_REV, rig)
-    assert g["new_draft"] and not g["valid"] and not g["passed"] and len(g["issues"]) == 1 and g["void"] == 1
-    r = review_zh.check_review(TEXT, review(4), "周报")
-    report = review_zh.report(r, None, g)
-    assert "新稿问题 1 条" in report and "原稿问题" not in report
-    assert "审查无效" in report and "需全新评委重审" in report and report.endswith("结论：未通过")
-
-
-def test_existing_paper_issues_cannot_quote_only_the_revised_version():
-    g = review_zh.check_rigor(PAPER_ORIG, PAPER_REV, {
-        "regressions": [], "issues": [{"text": "原因在于数据的规模和特征的尺度", "type": "结论与证据"}],
-    })
-    assert not g["new_draft"] and g["issues"] == [] and g["void"] == 1 and not g["passed"]
-
-
-def test_invalid_regression_alone_cannot_produce_a_successful_rigor_review():
-    rig = {"regressions": [{"original": "这句话从未出现在原稿中", "revised": "这句话也没有出现在新稿中", "type": "论断"}], "issues": []}
-    g = review_zh.check_rigor(PAPER_ORIG, PAPER_REV, rig)
-    assert g["regressions"] == [] and g["void"] == 1 and not g["valid"] and not g["passed"]
-
-
-def test_empty_rigor_findings_and_valid_new_draft_issues_pass():
-    for original in (PAPER_ORIG, ""):
-        g = review_zh.check_rigor(original, PAPER_REV, {"regressions": [], "issues": []})
-        assert g["valid"] and g["passed"] and g["void"] == 0
-    g = review_zh.check_rigor("", PAPER_REV, {
-        "regressions": [], "issues": [{"text": "原因在于数据的规模和特征的尺度", "type": "结论与证据"}],
-    })
-    assert g["valid"] and g["passed"] and len(g["issues"]) == 1

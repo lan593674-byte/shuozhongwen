@@ -2,14 +2,11 @@
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "shuozhongwen",
   "description": "shuozhongwen（说中文）：中文写作流程与文本清理插件。",
-  "owner": {
-    "name": "lan593674-byte",
-    "url": "https://github.com/lan593674-byte"
-  },
+  "owner": { "name": "lan593674-byte", "url": "https://github.com/lan593674-byte" },
   "plugins": [
     {
       "name": "shuozhongwen",
-      "description": "说中文：信息保留的中文与论文写作、独立评审改写、数据保真和文本清理。",
+      "description": "说中文：写或改中文文章，去 AI 腔、写出文学水准、事实经得起核查。",
       "source": "./",
       "category": "productivity"
     }

@@ -145,7 +145,7 @@ def main() -> int:
     p.add_argument("--no-facts", action="store_true", help="不做事实核查（论文模式本来就不做，外部事实由严谨性审查列给作者）")
     p.add_argument("--own", action="store_true", help="只给题目、没有材料的稿子：事实存疑要改到 0；不加则存疑只列给作者")
     p.add_argument("--paper", action="store_true", help="论文模式：用 lunwen-judge 审语言")
-    p.add_argument("--original", help="原稿或研究材料文件；论文模式省略时按新稿做严谨性审查")
+    p.add_argument("--original", help="论文模式：原稿文件，给了就同时跑严谨性审查（agents/rigor.md）")
     p.add_argument("--short-material", action="store_true", help="素材撑不起任务要的篇幅、修改报告已写明：评委只因篇幅判偏题时只提示，不拦")
     p.add_argument("--compare", metavar="原稿", help="精修：把这份原稿和稿件（新稿）交给对比评委，两种顺序各问一次；两次都判新稿更好才换")
     p.add_argument("--out-dir", help="审读和核查 JSON 的保存目录，默认与稿件同目录")
@@ -158,7 +158,7 @@ def main() -> int:
 
     src = Path(a.path)
     text = read_any(src).strip()
-    original = read_any(a.original).strip() if a.original else ("" if a.paper else None)
+    original = read_any(a.original).strip() if a.original else None
     facts_on = not a.no_facts and not a.paper
     out = Path(a.out_dir) if a.out_dir else src.parent
     out.mkdir(parents=True, exist_ok=True)

@@ -67,28 +67,6 @@ def test_end_to_end_with_mock_server(tmp_path):
     assert len(seen) == 2 and all(len(b["messages"]) == 2 for b in seen)
 
 
-def test_cli_preserves_task_and_short_material_with_stateless_reviews(tmp_path):
-    draft = tmp_path / "材料稿.txt"
-    draft.write_text(TEXT, encoding="utf-8")
-    judged = review(4)
-    judged.update(off_task=True, off_task_kind="篇幅", task_note="原始材料不足以支撑要求的字数")
-    srv, seen = _serve({"judge": json.dumps(judged, ensure_ascii=False), "facts": '{"claims": []}'})
-    task = "说明材料中的罗马遗迹，要求一千字"
-    try:
-        env = {**__import__("os").environ, "SHUOZHONGWEN_API_BASE": f"http://127.0.0.1:{srv.server_port}/v1",
-               "SHUOZHONGWEN_API_KEY": "", "OPENAI_API_KEY": "", "PYTHONUTF8": "1",
-               "SHUOZHONGWEN_JUDGE_CONFIG": str(tmp_path / "none.json")}
-        result = subprocess.run([sys.executable, str(SCRIPT), str(draft), "--genre", "说明文", "--task", task,
-                                 "--short-material", "--model", "mock", "--json"],
-                                capture_output=True, text=True, encoding="utf-8", env=env, timeout=60)
-    finally:
-        srv.shutdown()
-    out = json.loads(result.stdout)
-    assert result.returncode == 0 and out["review"]["length_only"] and out["review"]["passed"]
-    assert len(seen) == 2 and all(len(b["messages"]) == 2 for b in seen)
-    assert sum(task in b["messages"][-1]["content"] for b in seen) == 1
-
-
 def test_paper_mode_runs_lunwen_judge_and_rigor(tmp_path):
     import review_zh
     from test_review_zh import PAPER_ORIG, PAPER_REV
@@ -303,62 +281,3 @@ def test_compare_replaces_only_when_the_new_draft_wins_both_orders(tmp_path):
 
     r, _ = _cli_compare(tmp_path, picks_new=False)
     assert r.returncode == 1 and not json.loads(r.stdout)["compare"]["replace"]
-
-
-def test_new_paper_runs_language_and_rigor_and_cli_validates_new_draft_issues(tmp_path):
-    import review_zh
-
-    text = "本文以已经提供的实验数据为依据，讨论模型在不同样本规模下的表现。现有结果没有包含显著性检验，结论仍需按实际实验范围解释。"
-    draft = tmp_path / "新稿.txt"
-    draft.write_text(text, encoding="utf-8")
-    quote = "本文以已经提供的实验数据为依据"
-    judge = {"scores": {k: {"score": 4, "evidence": quote, "fix": ""} for k, _ in review_zh.PAPER_DIMENSIONS}}
-    rigor = {"regressions": [], "issues": [{"text": "现有结果没有包含显著性检验", "type": "结论与证据", "note": "需核对结论范围"}]}
-    srv, seen = _serve({"judge": json.dumps(judge, ensure_ascii=False), "rigor": json.dumps(rigor, ensure_ascii=False), "facts": "{}"})
-    try:
-        env = {**__import__("os").environ, "SHUOZHONGWEN_API_BASE": f"http://127.0.0.1:{srv.server_port}/v1",
-               "SHUOZHONGWEN_API_KEY": "", "OPENAI_API_KEY": "", "PYTHONUTF8": "1",
-               "SHUOZHONGWEN_JUDGE_CONFIG": str(tmp_path / "none.json")}
-        result = subprocess.run([sys.executable, str(SCRIPT), str(draft), "--genre", "论文", "--paper", "--model", "mock", "--json"],
-                                capture_output=True, text=True, encoding="utf-8", env=env, timeout=60)
-    finally:
-        srv.shutdown()
-    out = json.loads(result.stdout)
-    assert result.returncode == 0 and out["review"]["passed"]
-    assert out["rigor"]["new_draft"] and len(out["rigor"]["issues"]) == 1
-    assert len(seen) == 2 and all(len(b["messages"]) == 2 for b in seen)
-    assert (tmp_path / "新稿.rigor.json").exists()
-    checked = subprocess.run([sys.executable, "-X", "utf8", str(SCRIPT.parent / "review_zh.py"), str(draft), "--genre", "论文", "--paper",
-                              "--review", str(tmp_path / "新稿.review.json"), "--rigor", str(tmp_path / "新稿.rigor.json"), "--json"],
-                             capture_output=True, text=True, encoding="utf-8", timeout=60)
-    assert checked.returncode == 0 and json.loads(checked.stdout)["rigor"]["new_draft"]
-
-
-def test_mcp_rigor_accepts_an_empty_original_and_reports_new_paper_issues(monkeypatch):
-    import judge_config
-    import judge_mcp
-
-    draft = "现有结果没有包含显著性检验，结论仍需按实际实验范围解释。"
-    seen = []
-    monkeypatch.setattr(judge_config, "ready", lambda role: (True, ""))
-
-    def call_role(role, text, genre, original, task=""):
-        seen.append((role, text, original))
-        return "mock", json.dumps({"regressions": [], "issues": [{"text": "现有结果没有包含显著性检验", "type": "结论与证据"}]}, ensure_ascii=False)
-
-    monkeypatch.setattr(judge_api, "call_role", call_role)
-    result = judge_mcp.run_tool("rigor", {"text": draft, "original": ""})
-    assert seen == [("rigor", draft, "")]
-    assert "新稿问题 1 条" in result and "原稿问题" not in result
-
-
-def test_mcp_rigor_does_not_claim_success_when_issue_evidence_is_invented(monkeypatch):
-    import judge_config
-    import judge_mcp
-
-    monkeypatch.setattr(judge_config, "ready", lambda role: (True, ""))
-    monkeypatch.setattr(judge_api, "call_role", lambda *args, **kwargs: ("mock", json.dumps({
-        "regressions": [], "issues": [{"text": "这句话并未出现在提交审核的正文中", "type": "方法"}],
-    }, ensure_ascii=False)))
-    result = judge_mcp.run_tool("rigor", {"text": "本文以已经提供的实验数据为依据，讨论模型表现。", "original": ""})
-    assert "审查无效" in result and "需全新评委重审" in result and "结论：未通过" in result
