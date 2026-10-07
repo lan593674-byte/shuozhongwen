@@ -357,7 +357,7 @@ def test_mcp_rigor_does_not_claim_success_when_issue_evidence_is_invented(monkey
     import judge_mcp
 
     monkeypatch.setattr(judge_config, "ready", lambda role: (True, ""))
-    monkeypatch.setattr(judge_api, "call_role", lambda *args: ("mock", json.dumps({
+    monkeypatch.setattr(judge_api, "call_role", lambda *args, **kwargs: ("mock", json.dumps({
         "regressions": [], "issues": [{"text": "这句话并未出现在提交审核的正文中", "type": "方法"}],
     }, ensure_ascii=False)))
     result = judge_mcp.run_tool("rigor", {"text": "本文以已经提供的实验数据为依据，讨论模型表现。", "original": ""})
