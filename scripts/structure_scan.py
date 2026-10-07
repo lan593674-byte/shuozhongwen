@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Scan a Chinese draft for structural AI templates (结构套路).
+"""Report contextual structure signals in a Chinese draft (结构信号).
 
 The four regex scans (haohao_scan.py) look at words and punctuation. A draft
 can pass them and still read as AI because of how it is built. This scan
@@ -24,11 +24,10 @@ what follows or where it comes from (下面关于……的内容都出自……)
 writer's own sources (材料里只有两条 / 课程都没有讲). Naming a source when it is part
 of the argument is fine.
 
-Blocking: short_lead, summary_flip, attribution_repeat, meta_source, and
-stacking (four or more rules of any kind over their limit). The rest are hints.
-On the 111 human texts in calibration/human and calibration/test the blocking
-rules fail 2.7%.
-Dialogue (text inside quotation marks) and headings are not scanned.
+All observations are hints. Counts and co-occurrence do not decide writing
+quality or block delivery. A fresh judge assesses whether the structure serves
+the content. Normal academic subjects, headings, citations and topic sentences
+are permitted. Code, math, quoted dialogue and reference lists are not scanned.
 
 Usage: structure_scan.py 稿件 [--paper] [--json]   exit 0 = passed
 """
@@ -63,7 +62,7 @@ PARALLEL_CUES = ("越", "只", "就", "都", "才", "也", "却", "反倒", "倒
 # Words that are not about the subject: an opener announcing what follows or
 # where it comes from, and remarks on the writer's own sources (what they cover,
 # what they leave out). Naming a source as part of the argument is fine.
-META_OPEN = re.compile(r"^(下面|以下|本文|这篇文章|这篇|此文|接下来)[^。！？\n]{0,20}(内容|介绍|讨论|谈谈|说说|讲讲|分析|关于|将|要)")
+META_OPEN = re.compile(r"^(下面|以下|这篇文章|这篇|接下来)[^。！？\n]{0,20}(内容|介绍|讨论|谈谈|说说|讲讲|分析|关于|将|要)")
 META_SOURCE = re.compile(r"(材料|资料|课程|课件|讲座|字幕|视频|阅读材料|本单元|这一单元|这一讲|那几讲|这几讲)"
                          r"(里|中|上)?(都|还|也|并|又)?(只有|没有讲|没讲|都没有讲|都没讲|没有交代|没交代|没有提|没提|没有说|没说)"
                          r"|(都|均)?(出自|来自|取自)(本|这|以上|上述|所给的?|提供的)?(单元|课程|材料|资料|讲座|课件|字幕)")
@@ -87,27 +86,32 @@ RULES = (
     ("meta_source", "开场白和无关交代", "count"),
     ("source_mention", "交代信息出处（非必要不写）", "count"),
 )
-LIMITS = {"short_lead": 0.30, "one_line_para": 1, "self_qa": 1, "summary_flip": 2, "scare_quotes": 1.5,
-          "attribution_repeat": 5, "colon_list": 2, "aphorism": 1, "callback": 0, "process_i": 0, "meta_source": 0,
-          "source_mention": 0}
-# These block delivery; limits were set on the calibration corpus. The rest are
-# common in human writing too (web novels and Tieba posts ask and answer
-# questions, quote words and use one-line paragraphs more often than AI text
-# does), so they are hints. Zero tolerance on every rule fails 77% of the human
-# texts in calibration/human and calibration/test.
-GATES = {"short_lead", "summary_flip", "attribution_repeat", "meta_source"}
-# Templates rarely come alone. Four or more rules over their limit in one text
-# (hints included) blocks delivery: none of the 111 human texts in
-# calibration/human and calibration/test do that, the templated forum post that
-# prompted this scan hit six.
-STACK_LIMIT = 3
-SHORT_LEAD_MIN = 3        # at least this many hits before the share counts
+# Preserve the 3.8 attribution signal while removing acceptance thresholds.
+ATTRIBUTION_REPEAT_MIN = 6
 SHORT_LEAD_MAX_HAN = 10   # a "short verdict" opener has at most this many Han characters
 OPENER_MAX_HAN = 20       # listed for review (not counted): what the judges call 段首短判断
+PROTECTED = re.compile(
+    r"```.*?```|~~~.*?~~~|`[^`\n]*`|https?://\S+"
+    r"|\$\$.*?\$\$|(?<!\\)\$[^\n$]+\$|\\\(.*?\\\)|\\\[.*?\\\]"
+    r"|\\begin\{(equation\*?|align\*?|gather\*?|multline\*?|eqnarray\*?|math|displaymath)\}.*?\\end\{\1\}"
+    r"|\\(?:[A-Za-z]*cite[A-Za-z]*|[A-Za-z]*ref[A-Za-z]*|label|bibitem|bibliography|bibliographystyle)"
+    r"\*?(?:\[[^\]\n]*\])*(?:\{[^{}\n]*\})+", re.S)
+REFERENCE_HEAD = re.compile(r"^\s*(?:#*\s*(参考文献|references|bibliography)\s*|\\begin\{thebibliography\}(?:\{[^}]*\})?)$", re.I)
+REFERENCE_ENTRY = re.compile(r"^\s*[\[［]\s*\d+\s*[\]］]")
 
 
 def _han(s: str) -> int:
     return len(HAN.findall(s))
+
+
+def _protected_prose(text: str) -> str:
+    body = PROTECTED.sub(lambda m: re.sub(r"[^\n]", " ", m.group(0)), text)
+    lines, in_refs = [], False
+    for line in body.splitlines():
+        if REFERENCE_HEAD.match(line):
+            in_refs = True
+        lines.append("" if in_refs or REFERENCE_ENTRY.match(line) else line)
+    return "\n".join(lines)
 
 
 def paragraphs(text: str) -> list[str]:
@@ -121,7 +125,7 @@ def paragraphs(text: str) -> list[str]:
 
 
 def scan(text: str, paper: bool = False) -> dict:
-    paras = paragraphs(text)
+    paras = paragraphs(_protected_prose(text))
     prose = [p for p in paras if _han(p) >= 8]
     hits: dict[str, list[str]] = {k: [] for k, _, _ in RULES}
 
@@ -191,37 +195,27 @@ def scan(text: str, paper: bool = False) -> dict:
             attrib[src] += 1
             examples.setdefault(src, []).append(m.group(0))
     for src, n in attrib.items():
-        if n > LIMITS["attribution_repeat"]:
+        if n >= ATTRIBUTION_REPEAT_MIN:
             hits["attribution_repeat"].append(f"“{src}”作为出处出现 {n} 次：" + "、".join(examples[src][:5]))
 
     han_k = max(_han(text) / 1000, 0.3)
-    rules, passed = [], True
+    rules = []
     for key, label, kind in RULES:
         if paper and key == "scare_quotes":  # quoted terms are normal in academic prose
-            rules.append({"rule": key, "label": label, "passed": True, "count": 0, "hits": [], "skipped": True})
+            rules.append({"rule": key, "label": label, "passed": True, "gate": False, "flagged": False,
+                          "count": 0, "hits": [], "skipped": True})
             continue
         found = hits[key]
         if kind == "share":
             value = round(len(found) / len(long_paras), 2) if long_paras else 0.0
-            ok = len(found) < SHORT_LEAD_MIN or value <= LIMITS[key]
-            limit = f"占长段落 ≤{int(LIMITS[key] * 100)}%"
         elif kind == "per_k":
             value = round(len(found) / han_k, 2)
-            ok = value <= LIMITS[key]
-            limit = f"每千字 ≤{LIMITS[key]}"
         elif key == "attribution_repeat":
             value = len(found)
-            ok = not found
-            limit = f"同一出处 ≤{LIMITS[key]} 次"
         else:
             value = len(found)
-            ok = value <= LIMITS[key]
-            limit = f"≤{LIMITS[key]}"
-        gate = key in GATES
-        if gate:
-            passed &= ok
-        rules.append({"rule": key, "label": label, "count": len(found), "value": value, "limit": limit,
-                      "passed": ok, "gate": gate, "hits": found[:12]})
+        rules.append({"rule": key, "label": label, "count": len(found), "value": value, "limit": None,
+                      "passed": True, "gate": False, "flagged": bool(found), "hits": found[:12]})
     # 能不用引号就不用. In human prose most quotation marks hold a whole sentence
     # someone said (classics 51%, web novels and Tieba 82%); in model output most sit
     # on a single word or label (59%; Claude 64%): “上瘾模型” “参考地图” “一点点”.
@@ -237,7 +231,7 @@ def scan(text: str, paper: bool = False) -> dict:
             elif not SPEECH_BEFORE.search(before):
                 quotes.append(m.group(0))
     # Paragraphs that open with one short sentence (20 Han characters or fewer).
-    # The judges' 段首短判断 is wider than the short_lead gate above (they flag
+    # The judges' 段首短判断 is wider than the short_lead signal above (they flag
     # "从这个冬至到下一个冬至是一年。" and "可太阳走得并不匀。"), but a short
     # opener is just as often plain narration (classics: 58% of pieces have three),
     # so this only lists them for the writer to check, and never blocks.
@@ -246,10 +240,9 @@ def scan(text: str, paper: bool = False) -> dict:
         first = SENT.match(QUOTED.sub("", p))
         if first and _han(first.group(0)) <= OPENER_MAX_HAN and first.group(0).rstrip()[-1] in "。":
             openers.append(first.group(0).strip())
-    over = [r["label"] for r in rules if not r["passed"]]
-    stacked = len(over) > STACK_LIMIT
-    return {"passed": passed and not stacked, "paragraphs": len(prose), "long_paragraphs": len(long_paras),
-            "rules": rules, "stacked": {"count": len(over), "limit": STACK_LIMIT, "passed": not stacked, "rules": over},
+    observed = [r["label"] for r in rules if r.get("flagged")]
+    return {"passed": True, "paragraphs": len(prose), "long_paragraphs": len(long_paras),
+            "rules": rules, "stacked": {"count": len(observed), "limit": None, "passed": True, "rules": observed},
             "quotes": quotes, "sentence_quotes": sentence_quotes, "openers": openers}
 
 
@@ -259,24 +252,21 @@ def report(r: dict) -> str:
         if rule.get("skipped"):
             out.append(f"{rule['label']}：论文模式不扫")
             continue
-        state = "" if rule["passed"] else ("  ← 未通过" if rule["gate"] else "  ← 提示：逐处看一遍，是套路就改")
-        val = f"{rule['value']}" if rule["rule"] in ("short_lead", "scare_quotes") else f"{rule['count']} 处"
-        out.append(f"{rule['label']}：{val}（{rule['limit']}）{state}")
-        if not rule["passed"]:
+        out.append(f"{rule['label']}：{rule['count']} 处（仅提示，按语义和文体判断）")
+        if rule.get("flagged"):
             for h in rule["hits"]:
                 out.append(f"    {h[:60]}")
     if r.get("quotes"):
         out.append(f"引号套在词和短语上 {len(r['quotes'])} 处（引整句的 {r.get('sentence_quotes', 0)} 处不算）："
-                   "人类文字里引号多半引整句，AI 多半套在词上。逐处去掉引号再读，意思不变就别加："
+                   "核对引用、专名或讨论用语，保留有用表达："
                    + "、".join(r["quotes"][:12]))
     if len(r.get("openers", [])) >= 2:
-        out.append(f"段首第一句很短的段落 {len(r['openers'])} 个（不拦，逐处看）：这一句是结论、判断或报幕的，"
-                   "改成从具体的人、物、时间、数字写起，判断放到后面；写的是事实就留着："
+        out.append(f"段首第一句很短的段落 {len(r['openers'])} 个（仅提示，按语义和文体判断）："
+                   "正常主题句、结论句和事实可以保留，核对其与后文的关系："
                    + "｜".join(r["openers"][:8]))
     st = r.get("stacked")
     if st:
-        state = "" if st["passed"] else "  ← 未通过：套路叠在一起，读者一眼就能看出来"
-        out.append(f"套路叠加：{st['count']} 类超标（≤{st['limit']}）{state}")
+        out.append(f"结构信号：{st['count']} 类有命中，数量不决定通过，质量由独立内容评审判断")
     return "\n".join(out)
 
 

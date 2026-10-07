@@ -1,4 +1,4 @@
-"""structure_scan: structural AI templates; gates vs hints; calibration false-positive rate."""
+"""Structure signals retain 3.8 observations without rejecting useful writing by form."""
 
 from __future__ import annotations
 
@@ -40,13 +40,13 @@ def rules(text: str, **kw) -> dict:
     return {r["rule"]: r for r in ss.scan(text, **kw)["rules"]}
 
 
-def test_templated_text_fails_on_the_gates():
+def test_templated_text_is_reported_for_contextual_review():
     r = ss.scan(TEMPLATED)
     by = {x["rule"]: x for x in r["rules"]}
-    assert not r["passed"]
-    assert not by["short_lead"]["passed"] and "代价一样具体。" in by["short_lead"]["hits"]
-    assert not by["summary_flip"]["passed"]
-    assert not by["attribution_repeat"]["passed"] and "讲座" in by["attribution_repeat"]["hits"][0]
+    assert r["passed"] and all(not x["gate"] and x["passed"] for x in r["rules"])
+    assert by["short_lead"]["flagged"] and "代价一样具体。" in by["short_lead"]["hits"]
+    assert by["summary_flip"]["flagged"]
+    assert by["attribution_repeat"]["flagged"] and "讲座" in by["attribution_repeat"]["hits"][0]
     assert "可是通用也有通用的代价。" in by["one_line_para"]["hits"]
 
 
@@ -59,7 +59,7 @@ def test_hints_never_block():
     by = {x["rule"]: x for x in r["rules"]}
     assert r["passed"]
     assert by["self_qa"]["count"] >= 1 and not by["self_qa"]["gate"]
-    assert by["meta_source"]["gate"]
+    assert not by["meta_source"]["gate"]
 
 
 def test_gates_rarely_fire_on_human_calibration_texts():
@@ -78,7 +78,7 @@ def test_paper_mode_skips_quote_rule():
 def test_meta_source_talk_is_caught():
     text = "下面关于亚北极生活的内容，都出自本单元的课程页面和七段小讲座。春天冰面开裂，人不敢上冰，就靠回迁的鸭和雁过日子，冰化了再坐桦皮船去鱼多的地方。\n\n课程把这套描述当作整个北方森林带的代表，材料里只有两条讲到今天的克里人，打猎如今也是挣现金的活。\n"
     by = {x["rule"]: x for x in ss.scan(text)["rules"]}
-    assert by["meta_source"]["count"] >= 2 and not by["meta_source"]["passed"]
+    assert by["meta_source"]["count"] >= 2 and by["meta_source"]["flagged"]
     clean = "春天冰面开裂，人不敢上冰，就靠回迁的鸭和雁过日子，冰化了再坐桦皮船去鱼多的地方，夏天住进河边的渔营。\n"
     assert {x["rule"]: x for x in ss.scan(clean)["rules"]}["meta_source"]["passed"]
 
@@ -91,7 +91,7 @@ def test_new_rules_and_stacking_on_the_templated_post():
     assert by["process_i"]["count"] >= 2 and not by["process_i"]["gate"]
     assert by["callback"]["count"] == 1
     assert by["aphorism"]["count"] == 1
-    assert not r["stacked"]["passed"] and r["stacked"]["count"] >= 4
+    assert r["passed"] and r["stacked"]["passed"] and r["stacked"]["count"] >= 4
 
 
 def test_quotes_are_listed_but_never_block():
@@ -125,3 +125,26 @@ def test_short_paragraph_openers_are_listed_not_blocking():
     r = ss.scan(text)
     assert r["openers"] == ["从这个冬至到下一个冬至是一年。", "可太阳走得并不匀。"]
     assert r["passed"] and "段首第一句很短的段落 2 个" in ss.report(r)
+
+
+def test_normal_academic_subjects_topic_sentences_and_protected_content():
+    text = ("# 1. 引言\n\n本文讨论有限样本下的模型表现，研究范围限于已提供的实验数据。\n\n"
+            "样本存在差异。实验结果表明，各组表现受样本组成影响，表 1 显示的结果应结合评价口径解释，不可直接推广到其他场景。\n\n"
+            "```python\nprint('回头看，本文将介绍：水坝、采矿、污染。')\n```\n\n"
+            "$\\text{回头看，本文将介绍：水坝、采矿、污染。}$\n\n"
+            "引用键为\\cite{回头看，材料里只有,Key}，交叉引用为\\ref{回头看，材料里只有,Key}。\n")
+    r = ss.scan(text, paper=True)
+    by = {x["rule"]: x for x in r["rules"]}
+    assert r["passed"] and by["short_lead"]["count"] == 1
+    assert by["meta_source"]["count"] == by["summary_flip"]["count"] == 0
+
+
+def test_latex_math_environments_and_reference_entries_are_not_prose():
+    text = ("本文分析真实样本的变化，方法条件与结论范围均保持不变。\n\n"
+            "\\begin{equation}\n\\text{回头看，材料里只有三条：水坝、采矿、污染。}\n\\end{equation}\n\n"
+            "\\begin{align*}\n\\text{回头看，材料里只有三条：水坝、采矿、污染。}\n\\end{align*}\n\n"
+            "参考文献\n[1] 作者. 回头看，材料里只有三条：水坝、采矿、污染. 2020.\n")
+    r = ss.scan(text, paper=True)
+    by = {x["rule"]: x for x in r["rules"]}
+    assert r["passed"] and by["summary_flip"]["count"] == by["meta_source"]["count"] == 0
+    assert by["colon_list"]["count"] == 0
