@@ -30,7 +30,7 @@
 
 保留六项评分、1–5 分、原文证据验证和最多三轮改写。文学平均 ≥ 4，非文学及论文平均 ≥ 3.5，每项 ≥ 3；论文另保留原稿/改稿双证据严谨性审核，实际退步须为 0。实用文不因没有文采或个人态度判退，模板与结构次数只作为提示。论文研究问题另做自审报告，不偷偷改用户数据。
 
-MCP 仍提供 `judge`、`factcheck`、`lunwen_judge`、`rigor`、`judge_status`，配置和参数兼容。评委每轮只看标准和全文，没有上轮评分或改稿经过。独立评委不可用时明确报告，不能以作者自评代替。
+MCP 仍提供 `judge`、`compare`、`factcheck`、`lunwen_judge`、`rigor`、`judge_status`，保留 3.8.0 的配置、任务检查、短材料选项、双盲对比接口和流式重试能力；这些接口不增加主命令。评委每轮只看标准、当前任务要求和全文，没有上轮评分或改稿经过。独立评委不可用时明确报告，不能以作者自评代替。
 
 ## 数据保真
 
@@ -76,7 +76,7 @@ python shuozhongwen/install.py codex
 
 写稿的模型给自己打分会偏松：它认不出自己的套路，还会把这些套路当成好文章。所以插件优先让另一个模型当评委。
 
-插件自带一个 MCP 服务（`scripts/judge_mcp.py`，Claude Code 装插件时自动启动），提供 `judge`、`factcheck`、`lunwen_judge`、`rigor`、`judge_status` 五个工具。每次调用都是一次全新的请求，只带评分标准和正文，返回结果已经按 `review_zh.py` 核对过。`/shuozhongwen` 流程里会先调用它，没配置时再退回到子代理。
+插件自带一个 MCP 服务（`scripts/judge_mcp.py`，Claude Code 装插件时自动启动），提供 `judge`、`compare`、`factcheck`、`lunwen_judge`、`rigor`、`judge_status` 六个工具。每次调用都是一次全新的请求，只带评分标准、当前任务要求和正文，返回结果已经按 `review_zh.py` 核对过。`/shuozhongwen` 流程里会先调用它，没配置时再退回到子代理。
 
 接口、模型、密钥都放在一个配置文件里（默认 `~/.shuozhongwen/judge.json`，可以用环境变量 `SHUOZHONGWEN_JUDGE_CONFIG` 指到别处），以后换 API 只改这一处：
 

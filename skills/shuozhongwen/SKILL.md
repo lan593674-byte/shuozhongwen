@@ -43,9 +43,9 @@ disable-model-invocation: true
 
 ### 4. 独立打分与事实核对
 
-保存全文。优先现有 MCP：`judge_status` 后并行调用 `judge`（`genre` + `path` 或 `text`）和 `factcheck`（全文；题目新写设 `own: true`）。不改评委配置或密钥。每轮都是全新请求，不提供上一轮分数、作者身份或改稿经过。
+保存全文。优先现有 MCP：`judge_status` 后并行调用 `judge`（`genre` + `path` 或 `text`；有明确任务时附 `task`）和 `factcheck`（全文；题目新写设 `own: true`）。不改评委配置或密钥。每轮都是全新请求，不提供上一轮分数、作者身份或改稿经过。
 
-MCP 未配置或失败时，用两个全新的独立子代理，分别只给 `R/agents/judge.md` 或 `R/agents/factcheck.md` 的标准、文体与全文。已有兼容接口也可运行 `python S/judge_api.py 稿件 --genre 文体`。都不可用时保留稿件并明确“未完成独立评审”，不能自己打分冒充。
+MCP 未配置或失败时，用两个全新的独立子代理，分别只给 `R/agents/judge.md` 或 `R/agents/factcheck.md` 的标准、文体、当前任务要求与全文。已有兼容接口也可运行 `python S/judge_api.py 稿件 --genre 文体`，有明确任务时加 `--task 任务要求`；素材不足时沿用 `--short-material`，不编造内容凑长度。都不可用时保留稿件并明确“未完成独立评审”，不能自己打分冒充。
 
 保存原始 JSON 并运行：
 
